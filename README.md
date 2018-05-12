@@ -1,8 +1,6 @@
 # Paradox IP150-MQTTv2
 Python-based IP150 'middle-ware' that uses the IP module's software port for monitoring and control of the alarm via an MQTT Broker.
 
-Based on the very good work of Tertiush
-
 The script was designed to be extendable to support more alarm types. See the ParadoxMap.py file for details. If you want to do some tcp dump of your alarm model to add into there, get Paradox's Winload software. Then within it's root folder find a file called COM.ini and change the 'IPEncrypted' setting to FALSE. You can then use WireShark (or equivalent) to trap whatever commands/replies you want to and either extend the ParadoxMap.py's existing dictionaries or add in a complete new Class for another alarm type.
 
 <b>NB: This is still a very early release and has its bugs. Feel free to submit a PR, any help is appreciated, even if its for my bad grammer/spelling!</b>
@@ -112,11 +110,13 @@ Once the script has settled to listen for events, the following topics are avail
   * Payload (example): State Machine 4, Listening for events...
   * Payload (example): Output: Forcing PGM 1 to state: On
 
+### 3rd Party Connections
+This script will listen for 3rd party (Web-only, not software port) IP connections and if detected will disconnect for a period configured in the config.ini file. After the period has lapsed, the script will attempt to reconnect. This is useful if you still want to use web/smartphone apps (such as Alarmin). Note that it takes about 20 seconds to disconnect after which you can try to connect to the alarm again.
 
 ## Running as a service / daemon
 
 If you want to run this as a daemon on Linux, 
  1. Copy the paradoxip.service file to /usr/lib/systemd/system (where mine is)
- 2. Run sudo systemctl daemon-reload
- 3. Then you should be able to start the service with sudi service paradoxip start
+ 2. Run: sudo systemctl daemon-reload
+ 3. Then you should be able to start the service with : sudo systemctl start paradoxip.service
 
