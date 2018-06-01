@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import socket
 import time
 import lib.client as mqtt
@@ -10,6 +10,8 @@ import struct
 import importlib
 import logging
 import logging.handlers
+import os.path
+import json
 
 # Alarm controls can be given in payload, e.g. Paradox/C/P1, payl = Disarm
 ################################################################################################
@@ -17,6 +19,19 @@ import logging.handlers
 ################################################################################################
 # Change History
 ################################################################################################
+# 2018-06-01
+# - Working in the Panel Status messages showed that we were not logging in correctly
+#   and have added the pc password into the authentication this needs to refence the config.ini
+# - Deciphering the panel status message 0 for panel time, vdc and battery
+# - Will start deciphering the other messages as they given partition and zone status.
+# 2018-05-12
+# - Deciphering the heartbeat request - which is actually the udpatezonestatus call.
+#   this includes the arm/disarm state and battery voltage.
+
+# 2018-05-12
+# - Added heartbeat messsage and topic config
+# - Is added as the last will and testament - meaning on script end it is set to false
+
 # 2017-03-11
 # - Longer delay on errors.
 #
@@ -44,6 +59,8 @@ Poll_Speed = 30.5  # Seconds (float)
 MQTT_IP = "10.0.0.130"
 MQTT_Port = 1883
 MQTT_KeepAlive = 60  # Seconds
+mqtt_username = None
+mqtt_password = None
 
 # Options are Arm, Disarm, Stay, Sleep (case sensitive!)
 Topic_Publish_Events = "Paradox/Events"
@@ -55,6 +72,8 @@ Topic_Publish_Labels = "Paradox/Labels"
 Topic_Publish_AppState = "Paradox/State"
 Topic_Publish_ZoneState = "Paradox/Zone"
 Topic_Publish_ArmState = "Paradox/Partition"
+Topic_Publish_Heartbeat = "Paradox/Heatbeat"
+Publish_Static_Topic = 0
 Alarm_Model = "ParadoxMG5050"
 Alarm_Registry_Map = "ParadoxMG5050"
 Alarm_Event_Map = "ParadoxMG5050"
@@ -128,7 +147,7 @@ def on_message(client, userdata, msg):
         if "Polling" in msg.topic:
             if "Enable" in msg.topic:
                 logging.info("Enable polling message received...")
-                client.publish(Topic_Publish_AppState, "Polling: Enabling...", 0, True)
+                client.publish(Topic_Publish_AppState, "Polling: Enabling...", 1, True)
                 Polling_Enabled = 1
             if "Disable" in msg.topic:
                 logging.info("Disable polling message received...")
@@ -146,7 +165,7 @@ def on_message(client, userdata, msg):
                         logging.info('No payload given for control number: e.g. On')
                 logging.info("Output force control state: %s " % Output_FControl_NewState)
                 client.publish(Topic_Publish_AppState,
-                               "Output: Forcing PGM " + str(Output_FControl_Number) + " to state: " + Output_FControl_NewState, 0, True)
+                               "Output: Forcing PGM " + str(Output_FControl_Number) + " to state: " + Output_FControl_NewState, 1, True)
                 Output_FControl_Action = 1
             except:
                 logging.error("MQTT message received with incorrect structure")
@@ -164,7 +183,7 @@ def on_message(client, userdata, msg):
                 logging.info("Output pulse control state: %s" % Output_PControl_NewState)
                 client.publish(Topic_Publish_AppState,
                                "Output: Pulsing PGM " + str(Output_PControl_Number) + " to state: " + Output_PControl_NewState,
-                               0, True)
+                               1, True)
                 Output_PControl_Action = 1
             except:
                 logging.error("MQTT message received with incorrect structure")
@@ -182,7 +201,7 @@ def on_message(client, userdata, msg):
                 logging.info("Alarm control state: %s" % Alarm_Control_NewState)
                 client.publish(Topic_Publish_AppState,
                                "Alarm: Control partition " + str(Alarm_Control_Partition) + " to state: " + Alarm_Control_NewState,
-                               0, True)
+                               1, True)
                 Alarm_Control_Action = 1
             except:
                 logging.error("MQTT message received with incorrect structure")
@@ -201,7 +220,7 @@ def connect_ip150socket(address, port):
         print "error connecting"
         client.publish(Topic_Publish_AppState,
                        "Error connecting to IP module (exiting): " + repr(e),
-                       0, True)
+                       1, True)
         sys.exit()
 
     return s
@@ -213,7 +232,7 @@ class paradox:
     alarmName = None
     zoneTotal = 0
     zoneStatus = ['']
-    zoneNames = ['']
+    zoneNames = {}
     zonePartition = None
     partitionStatus = None
     partitionName = None
@@ -264,7 +283,7 @@ class paradox:
         logging.info("Loading previous event states and labels from file")
         self.eventmap.load()
 
-    def login(self, password, Debug_Mode=0):  # Construct the login message, 16 byte header +
+    def login(self, password,pcpassword, Debug_Mode=0):  # Construct the login message, 16 byte header +
         # 16byte [or multiple] payloading being the password
         logging.info("Logging into alarm system...")
 
@@ -331,24 +350,44 @@ class paradox:
         header[3] = '\x04'
         header[5] = '\x00'
         header2 = "".join(header)
+        #Command 0x5F : Start communication
+        print "Command 0x5F : Start communication"
         message = '\x5f\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         message = self.format37ByteMessage(message)
         reply = self.readDataRaw(header2 + message, Debug_Mode)
-
+        # pull from here, the panel pd, firmware version.
         header[1] = '\x25'
         header[3] = '\x04'
         header[5] = '\x00'
         header[7] = '\x14'
         header2 = "".join(header)
         # reply = '\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x13\x14\x15\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x13\x14\x15\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10\x11\x12\x13\x14\x15\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09'
+        #          0xaa 0x25 0x0 0x2 0x72 0x0 0x0 0x0 0x0 0xee 0xee 0xee 0xee 0xee 0xee 0xee ### 0x0 0x0 0x0 0x0 0x16 0x6 0x10 0x2 0x27 0x29 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x0 0x7e
+        #get the first half of the message with the prodct type and panel id into the new 00 request
         message = reply[16:26]
-        message += reply[24:26]
+
+        print "***********************************Product Type: {}".format(hex(ord(message[4])))
+        print "***********************************Firmware: {}.{}.{}".format(hex(ord(message[5])),hex(ord(message[6])),hex(ord(message[7])))
+        print "********************************Panel ID: {} {}".format(hex(ord(message[8])),hex(ord(message[9])))
+        print "COMMS MESSAGE  : " + " ".join(hex(ord(i)) for i in message)
+        print "********************************P"
+        
+        #need to work out how to get pcpassword (PIN) form Config which) to hex string.
+        #eg PIN of 1234 should be added as b'\x12' b'\x34' not converted.
+        #pcpasswordhex = bytes.fromhex(pcpassword)
+        
+        #print "COMMS MESSAGE  : {}{}".format(hex(ord(pcpasswordhex[0])),hex(ord(pcpasswordhex[1])))
+        #print "COMMS MESSAGE  : {}".format(hex(i))
+        #message += 
+
         message += '\x19\x00\x00'
         message += reply[31:39]
         message += '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00'
         message = self.format37ByteMessage(message)
+        print "Command 0x00 : Initialize communication"
         reply = self.readDataRaw(header2 + message, Debug_Mode)
 
+        print "Command 0x50 : PC Status 0"
         header[1] = '\x25'
         header[3] = '\x04'
         header[5] = '\x00'
@@ -377,11 +416,11 @@ class paradox:
             for val in message:  # Calculate checksum
                 checksum += ord(val)
 
-            # print "CS: " + str(checksum)
+            #print "CS: " + str(checksum)
             while checksum > 255:
                 checksum = checksum - (checksum / 256) * 256
 
-            # print "CS: " + str(checksum)
+            #print "CS: " + str(checksum)
 
             message += bytes(bytearray([checksum]))  # Add check to end of message
 
@@ -390,9 +429,89 @@ class paradox:
             if (msgLen % 16) != 0:
                 message = message.ljust((msgLen / 16 + 1) * 16, '\xee')
 
-        # print " ".join(hex(ord(i)) for i in message)
+        #print " ".join(hex(ord(i)) for i in message)
 
         return message
+
+    # Implementation inspired by https://github.com/bioego/Paradox-UWP
+    def updateZoneAndAlarmStatus(self, Startup_Publish_All_Info="True", Debug_Mode=0):
+        header = "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee"
+        message = "\x50\x00\x80"
+        # reguest ID
+        message += "\x00"
+        #NU - 4 - 32  4   5   6   7   8   9  10   11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33
+        message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        #source  
+        message += "\x00"
+        #user id
+        message += "\x00\x00"
+        # 2nd byte was d0
+        #message += "\xd0\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
+        reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+        if len(reply) < 39:
+          print "Response without zone status: {}".format(len(reply))
+          return
+        print "***************************************************** printing values"
+        data = reply[16:]
+        print "heart beat status 0 reply: <--" + " ".join(hex(ord(i)) for i in data)
+        print "Value 16 ({}) and 17 ({}) ".format(ord(data[0]), ord(data[1]))
+        if data[1] == '\x00' and (data[0] == '\x50' or data[0] == '\x52'):
+            print "Year :  {}{}".format(ord(data[9]),ord(data[10]))
+            print "Month : {}".format( ord(data[11]))
+            print "Day :   {}".format(ord(data[12]))
+            print "Hour:   {}".format( ord(data[13]))
+            print "minute: {}".format( ord(data[14]))
+            print "ac:  {}".format( ord(data[15]))
+            print "DC:  {}".format( ord(data[16]))
+            print "BDC: {}".format(ord(data[17]))
+            # Skip to zone status
+            reply = reply[25:]
+            reply = reply[1:]
+        else:
+            print "No 00 record found"
+            # Skip to zone status
+            reply = reply[25:]
+            #reply = reply[10:] # skip date, time and voltages
+            reply = reply[10:]
+        
+        
+        
+        
+        for x in range(4):
+          data = ord(reply[x])
+          for y in range(8):
+            bit = data & 1
+            data = data / 2
+            itemNo = x * 8 + y + 1
+            if itemNo in self.zoneNames.keys():
+              location = self.zoneNames[itemNo]
+              if len(location) > 0:
+                zoneState = "ON" if bit else "OFF"
+                print "Publishing initial zone state (state:" + zoneState + ", zone:" + location + ")"
+                #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
+                client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
+        time.sleep(0.3)
+        message =  "\x50\x00\x80\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd1\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
+        print "heart beat status 1 request: -->" + " ".join(hex(ord(i)) for i in message)
+        reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+        print "heart beat reply status 1 : <--" + " ".join(hex(ord(i)) for i in reply)
+        if len(reply) < 34:
+          print "Response without zone status"
+          return
+        # Skip to alarm status
+        reply = reply[33:]
+        alarmState = ord(reply[0])
+        alarmState = "ON" if (alarmState & 1) else "OFF"
+        print "Publishing initial alarm state (state:" + alarmState + ")"
+        if Debug_Mode >= 2:
+            logging.debug("updateZoneAndAlarmStatus: Publishing initial alarm state (state:" + alarmState + ")")
+
+        #client.publish(Topic_Publish_ArmState, alarmState, qos=1, retain=True)
+        if Startup_Publish_All_Info == "True":
+            client.publish(Topic_Publish_ArmState, alarmState, qos=1, retain=True)
+        time.sleep(0.3)
+        return
 
     def updateAllLabels(self, Startup_Publish_All_Info="True", Topic_Publish_Labels="True", Debug_Mode=0):
 
@@ -461,10 +580,11 @@ class paradox:
 
                 if Startup_Publish_All_Info == "True":
                     topic = func.split("Label")[0]
-                    print topic
+                    if topic[0].upper() + topic[1:] + "s" == "Zones":
+                      self.zoneNames = completed_dict
                     logging.info("updateAllLabels:  Topic being published " + Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s" + ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()))
                     client.publish(Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s",
-                                   ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()))
+                                   ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()), 1, True)
 
 
             except Exception, e:
@@ -472,9 +592,10 @@ class paradox:
 
         return
 
-    def testForEvents(self, Events_Payload_Numeric=0, Debug_Mode=0):
+    def testForEvents(self, Events_Payload_Numeric=0, Publish_Static_Topic=0, Debug_Mode=0):
 
         reply_amount, headers, messages = self.splitMessage(self.readDataRaw('', Debug_Mode))
+        interrupt = 0  # Signal 3rd party connection interrupt
 
         #if Debug_Mode >= 1:
         #    logging.debug('.')
@@ -502,10 +623,10 @@ class paradox:
                             if Events_Payload_Numeric == 0:
 
                                 event, subevent = self.eventmap.getEventDescription(ord(message[7]), ord(message[8]))
-                                location =  message[15:30].strip()
+                                location = message[15:30].strip().translate(None, '\x00')
                                 if location:
-                                    logging.debug("Event: \"%s\"" % location)
-                                    print "Event: \"%s\"" % location
+                                    logging.debug("Event location: \"%s\"" % location)
+                                    print "Event location: \"%s\"" % location
 
                                 reply = "Event:" + event + ";SubEvent:" + subevent
 
@@ -513,22 +634,33 @@ class paradox:
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
                                 if ord(message[7]) == 0:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "OFF"))
-                                    client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=0, retain=False)
+                                    client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=1, retain=True)
                                 elif ord(message[7]) == 1:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "ON"))
-                                    client.publish(Topic_Publish_ZoneState + "/" + location,"ON", qos=0, retain=False)
-                                elif ord(message[7]) == 2 and ord(message[8]) == 11:   #Disarm
+                                    client.publish(Topic_Publish_ZoneState + "/" + location,"ON", qos=1, retain=True)
+                                elif ord(message[7]) == 2 and (ord(message[8]) == 11 or ord(message[8]) == 3):   #Disarm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "disarm"))
-                                    client.publish(Topic_Publish_ArmState ,"OFF", qos=0, retain=False)
-                                elif ord(message[7]) == 2 and ord(message[8]) == 12:   #arm
+                                    client.publish(Topic_Publish_ArmState ,"OFF", qos=1, retain=True)
+                                elif ord(message[7]) == 2 and (ord(message[8]) == 12 or ord(message[8]) == 14):   #arm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
-                                    client.publish(Topic_Publish_ArmState ,"ON", qos=0, retain=False)
+                                    client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
+                                elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
+                                    print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
+                                    if message[8]:
+                                       print "Message 8: %s" % str(ord(message[8]))
+                                       logging.info("Publishing event \"%s Button%s\" =  %s" % (Topic_Publish_Events,str(ord(message[8])), "ON"))
+                                       client.publish(Topic_Publish_Events + "/PGM" + str(ord(message[8])) ,"ON", qos=1, retain=True)
+  
 
-                            else:
+                            if Events_Payload_Numeric == 1:
 
                                 reply = "E:" + str(ord(message[7])) + ";SE:" + str(ord(message[8]))
                                 logging.info("Publishing event E\"%s\" for :SE %s " % (str(ord(message[7])), str(ord(message[8])) ) )
 
+                            if Publish_Static_Topic == "1":
+                                client.publish(Topic_Publish_Events + "/" + str(ord(message[7])) + "/" + str(ord(message[8])), qos=1, retain=False)
+
+                            logging.debug("Message 7: {0} Message 8: {1}".format(ord(message[7]),ord(message[8])))
 
                             client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
 
@@ -539,12 +671,12 @@ class paradox:
                             reply = "No register entry for Event: " + str(ord(message[7])) + ", Sub-Event: " + str(
                                 ord(message[8]))
 
+                    elif message[0] == '\x75' and message[1] == '\x49':
+                        interrupt = 1
                     else:
                         reply = "Unknown event: " + " ".join(hex(ord(i)) for i in message)
 
-
-
-        return reply
+        return interrupt
 
     def splitMessage(self, request=''):  # FIXME: Make msg a list to handle multiple 37byte replies
 
@@ -605,6 +737,10 @@ class paradox:
             try:
                 if Debug_Mode >= 2:
                     logging.debug(str(len(request)) + "->   " + " ".join(hex(ord(i)) for i in request))
+                if len(request) == 0: # heartbeart
+                    logging.info("Publishing heartbeat event")
+                    client.publish(Topic_Publish_Heartbeat,"ON")
+
                 self.sendData(request)
                 inc_data = self.comms.recv(1024)
                 if Debug_Mode >= 2:
@@ -727,11 +863,73 @@ class paradox:
 
         return
 
-    def disconnect(self, Debug_Mode=0):
+    def disconnect(self, Debug_Mode=2):
 
-        header = "\xaa\x00\x00\x03\x51\xff\x00\x0e\x00\x01\xee\xee\xee\xee\xee\xee"
+        # header = "\xaa\x00\x00\x03\x51\xff\x00\x0e\x00\x01\xee\xee\xee\xee\xee\xee"
+        header = "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee"
+        message = "\x70\x00\x05"
 
-        self.readDataRaw(header, Debug_Mode)
+        self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+
+    def keepAliveStatus0(self, data, Debug_Mode):
+        paneldatetime = "{}-{}-{} {}:{}".format(ord(data[9])*100 + ord(data[10]),
+                        ord(data[11]),
+                        ord(data[12]),
+                        ord(data[13]),
+                        ord(data[14]))
+        print "dateTime: {}".format(paneldatetime)
+        vdc = round(ord(data[15])*(20.3-1.4)/255.0+1.4,1)
+        #vdc = ord(data[15])
+        print "VDC: {}".format(vdc) 
+        dc = round(ord(data[16])*22.8/255.0,1)
+        print "DC: {}".format(dc)
+        battery = round(ord(data[17])*22.8/255.0,1)
+        jsondata = json.dumps({"paneldate":paneldatetime,"vdc":vdc,"dc":dc,"battery":battery})
+        logging.info("Publishing panel status json: '{}'".format(jsondata))
+        client.publish("Paradox/Status/{0}".format(self.aliveSeq),jsondata)
+        print "battery: {}".format(battery)
+
+        b = 0
+        bt = 0
+        #Tertuish Method
+        # for x in range(4):
+        #   data = ord(reply[x])
+        #   for y in range(8):
+        #     bit = data & 1
+        #     data = data / 2
+        #     itemNo = x * 8 + y + 1
+        #     if itemNo in self.zoneNames.keys():
+        #       location = self.zoneNames[itemNo]
+        #       if len(location) > 0:
+        #         zoneState = "ON" if bit else "OFF"
+        #         print "Publishing initial zone state (state:" + zoneState + ", zone:" + location + ")"
+        #         #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
+        #         client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
+
+        #PAI Mthod
+        # Zone States
+        # Ignore the last zone (99 = Any Zone)
+        #for i in range(0, len(Alarm_Data['zone']) - 1 ):
+
+        #    bt = i % 8
+        #    if i != 0 and bt == 0:
+        #        b += 1
+            
+        #    if Alarm_Data['labels']['zoneLabel'][i+1].startswith("Zone "):
+        #        continue
+            
+        #    state = (ord(data[19 + b]) >> bt) & 0x01
+        #    if state == 0:
+        #        state  = "Zone OK"
+        #    else:
+        #        state = "Zone open"
+            
+        #    oldState = Alarm_Data['zone'][i]['state']
+        #    if oldState is None or oldState != state and ('open' in oldState or 'OK' in oldState):
+                
+        #        Alarm_Data['zone'][i]['state'] = state
+        #        
+        #        client.publish(Topic_Publish_Status+"/Zones/"+Alarm_Data['labels']['zoneLabel'][i + 1].replace(' ','_').title(), state, retain=True)
 
     def keepAlive(self, Debug_Mode=0):
 
@@ -741,13 +939,198 @@ class paradox:
 
         message += bytes(bytearray([self.aliveSeq]))
 
+        #message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                  #"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd0\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
         message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        message = self.format37ByteMessage(message)
+        #self.sendData(header + message)
+        reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+        if len(reply) > 0:
+            print "heart beat reply status " + str(self.aliveSeq) + " : <--" + " ".join(hex(ord(i)) for i in reply)
+            data = reply[16:]
+            print "heart beat status 0 reply: <--" + " ".join(hex(ord(i)) for i in data)
+            print "Value 16 ({}) and 17 ({}) ".format(ord(data[0]), ord(data[1]))
+            if data[1] == '\x00' and (data[0] == '\x50' or data[0] == '\x52') and self.aliveSeq == 0:
+                self.keepAliveStatus0(data,Debug_Mode)
+                # paneldatetime = "{}-{}-{} {}:{}".format(ord(data[9])*100 + ord(data[10]),
+                #         ord(data[11]),
+                #         ord(data[12]),
+                #         ord(data[13]),
+                #         ord(data[14]))
+                # print "dateTime: {}".format(paneldatetime)
+                # vdc = round(ord(data[15])*(20.3-1.4)/255.0+1.4,1)
+                # #vdc = ord(data[15])
+                # print "VDC: {}".format(vdc) 
+                # dc = round(ord(data[16])*22.8/255.0,1)
+                # print "DC: {}".format(dc)
+                # battery = round(ord(data[17])*22.8/255.0,1)
+                # jsondata = json.dumps({"paneldate":paneldatetime,"vdc":vdc,"dc":dc,"battery":battery})
+                # logging.info("Publishing panel status json: '{}'".format(jsondata))
+                # client.publish("Paradox/Status/{0}".format(self.aliveSeq),jsondata)
+                # print "battery: {}".format(battery)
 
-        self.sendData(header + message)
+                # b = 0
+                # bt = 0
+                # Zone States
+                # Ignore the last zone (99 = Any Zone)
+                #for i in range(0, len(Alarm_Data['zone']) - 1 ):
 
+                #    bt = i % 8
+                #    if i != 0 and bt == 0:
+                #        b += 1
+                    
+                #    if Alarm_Data['labels']['zoneLabel'][i+1].startswith("Zone "):
+                #        continue
+                    
+                #    state = (ord(data[19 + b]) >> bt) & 0x01
+                #    if state == 0:
+                #        state  = "Zone OK"
+                #    else:
+                #        state = "Zone open"
+                    
+                #    oldState = Alarm_Data['zone'][i]['state']
+                #    if oldState is None or oldState != state and ('open' in oldState or 'OK' in oldState):
+                        
+                #        Alarm_Data['zone'][i]['state'] = state
+                #        
+                #        client.publish(Topic_Publish_Status+"/Zones/"+Alarm_Data['labels']['zoneLabel'][i + 1].replace(' ','_').title(), state, retain=True)
+            else:
+                print "***** SEQUENCE {}".format(self.aliveSeq)
+        else:
+            print "no reply received"
         self.aliveSeq += 1
         if self.aliveSeq > 6:
             self.aliveSeq = 0
+
+    
+    def keepAlivePAI(self, Debug_Mode=0):
+
+        global Alarm_Data
+
+        aliveSeq = 0
+        header = "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee"
+    
+        while aliveSeq < 3:
+            message = "\x50\x00\x80"
+            message += bytes(bytearray([aliveSeq]))
+            message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+
+
+            data = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+            data = data[16:]
+            print "keepAlivePAI Response: " + str(self.aliveSeq) + " : <--" + " ".join(hex(ord(i)) for i in data)   
+            if len(data) != 37 or ord(data[0]) != 0x52 or ord(data[3]) != aliveSeq:
+                logger.warn("Invalid message")
+                if data is not None and len(data) > 0:
+                    m = str(len(data)) + " <- "                
+
+                    for c in data:
+                        m += " %02x" % ord(c)
+                    logger.debug(m)
+                return
+
+            if aliveSeq == 0:
+                print "dateTime: {}-{}-{} {}:{}".format(ord(data[9])*100 + ord(data[10]),
+                        ord(data[11]),
+                        ord(data[12]),
+                        ord(data[13]),
+                        ord(data[14]))
+                #Alarm_Data['date_time'] = {"year": ,
+                #        "month": ord(data[11]),
+                #        "day": ord(data[12]),
+                #        "hours": ord(data[13]),
+                #        "minutes": ord(data[14])}
+                print "VDC: {}".format(round(ord(data[15])*(20.3-1.4)/255.0+1.4,1)) 
+                print "DC: {}".format(round(ord(data[16])*22.8/255.0,1))
+                print "battery: {}".format(round(ord(data[17])*22.8/255.0,1))
+                #voltage =   {'vdc': round(ord(data[15])*(20.3-1.4)/255.0+1.4,1) , 
+                #            'dc': round(ord(data[16])*22.8/255.0,1),
+                #            'battery': round(ord(data[17])*22.8/255.0,1)}
+
+                #if not 'voltage' in Alarm_Data.keys() or \
+                #    abs(voltage['vdc'] - Alarm_Data['voltage']['vdc']) > 0.3 or abs(voltage['dc'] - Alarm_Data['voltage']['dc']) > 0.3 or abs(voltage['battery'] - Alarm_Data['voltage']['battery']) > 0.3:
+                # 
+                #    client.publish(Topic_Publish_Battery, json.dumps(voltage), retain=True)
+                #    Alarm_Data['voltage'] = voltage
+                
+                b = 0
+                bt = 0
+
+                ## Ignore the last zone (99 = Any Zone)
+                #for i in range(0, len(Alarm_Data['zone']) - 1 ):
+
+                #    bt = i % 8
+                #    if i != 0 and bt == 0:
+                #        b += 1
+                    
+                #    if Alarm_Data['labels']['zoneLabel'][i+1].startswith("Zone "):
+                #        continue
+                    
+                #    state = (ord(data[19 + b]) >> bt) & 0x01
+                #    if state == 0:
+                #        state  = "Zone OK"
+                #    else:
+                #        state = "Zone open"
+                    
+                #    oldState = Alarm_Data['zone'][i]['state']
+                #    if oldState is None or oldState != state and ('open' in oldState or 'OK' in oldState):
+                        
+                #        Alarm_Data['zone'][i]['state'] = state
+                #        
+                #        client.publish(Topic_Publish_Status+"/Zones/"+Alarm_Data['labels']['zoneLabel'][i + 1].replace(' ','_').title(), state, retain=True)
+                       
+            #elif aliveSeq == 1:
+            #    changed = False
+
+                #for i in [0, 1]:
+                #    state = 0
+
+                    # Arming
+                #    if ord(data[18 + i * 4]) == 0x01:
+                #        state = "Arm"
+                #    elif ord(data[17 + i * 4]) == 0x01:
+                #        state = "Arm"
+                #    else:
+                #        state  = "Disarm"
+
+                #    if Alarm_Data['partition'][i] != state:
+                #        client.publish(Topic_Publish_Status + "/Partitions/%d" % (i + 1), str(state), retain=True )
+                #        Alarm_Data['partition'][i] = state
+                #        changed = True
+                
+                #if changed:
+                    # See if all partitions are in the same state
+                #    states = dict()
+                #    for p in Alarm_Data['partition']:
+                #        states[p] = 1
+
+                #    if len(states.keys()) == 1:
+                #        client.publish(Topic_Publish_Status + "/Partitions/All", str(states.keys()[0]), retain=True )
+                #    else:
+                #        client.publish(Topic_Publish_Status + "/Partitions/All", "Mixed", retain=True )
+            
+            #elif aliveSeq == 2:
+                #for i in range(0, len(Alarm_Data['zone']) - 1 ):
+                #    state = ord(data[4 + i])
+                #    changed = False
+
+                #    if state & 0x08 != 0:
+                #        if not Alarm_Data['zone'][i]['bypass']:
+                #            changed = True
+                #        Alarm_Data['zone'][i]['bypass'] = True
+                #    else:
+                #        if Alarm_Data['zone'][i]['bypass']:
+                #            changed = True
+                #        Alarm_Data['zone'][i]['bypass'] = False
+                
+                #    if changed:
+                #        m = Alarm_Data['zone'][i]['state']
+                #        if Alarm_Data['zone'][i]['bypass']:
+                #            m += " (Bypass)"
+
+                #        client.publish(Topic_Publish_Status+"/Zones/"+Alarm_Data['labels']['zoneLabel'][i + 1].replace(' ','_').title(), m, retain=True)
+
+            aliveSeq += 1
 
     def walker(self, ):
         self.zoneTotal = Zone_Amount
@@ -786,6 +1169,9 @@ if __name__ == '__main__':
     attempts = 3
     print "logging to file %s" % LOG_FILE
     speciallogging = False
+    interruptCountdown = 0
+    interrupt = 0
+    keepalivecount = 0
 
     while True:
 
@@ -804,7 +1190,8 @@ if __name__ == '__main__':
                 Config = ConfigParser.ConfigParser()
                 Config.read("config.ini")
                 LOG_FILE = Config.get("Application","Log_File")
-                log_handler = logging.handlers.WatchedFileHandler(LOG_FILE)
+                #log_handler = logging.handlers.WatchedFileHandler(LOG_FILE)
+                log_handler = logging.handlers.TimedRotatingFileHandler(LOG_FILE,when="D",interval=1,backupCount=5)
                 formatter = logging.Formatter(LOG_FORMAT)
                 log_handler.setLevel(logging.DEBUG)
                 log_handler.setFormatter(formatter)
@@ -819,7 +1206,12 @@ if __name__ == '__main__':
                 logger.addHandler(log_handler2)
                 logger.addHandler(log_handler)
                 logger.info("logging complete")
-                logger.error("test")
+                if os.path.isfile(LOG_FILE) :
+                    logging.info("Rolling old log over")
+                    try:
+                       logger.addhandler[1].doRollover()
+                    except:
+                       pass
 
 
                 Alarm_Model = Config.get("Alarm", "Alarm_Model")
@@ -834,6 +1226,8 @@ if __name__ == '__main__':
                 IP150_Port = int(Config.get("IP150", "IP_Software_Port"))
                 MQTT_IP = Config.get("MQTT Broker", "IP")
                 MQTT_Port = int(Config.get("MQTT Broker", "Port"))
+                mqtt_username = Config.get("MQTT Broker", "Mqtt_Username")
+                mqtt_password = Config.get("MQTT Broker", "Mqtt_Password")
 
                 Topic_Publish_Events = Config.get("MQTT Topics", "Topic_Publish_Events")
                 Events_Payload_Numeric = int(Config.get("MQTT Topics", "Events_Payload_Numeric"))
@@ -844,7 +1238,12 @@ if __name__ == '__main__':
                 Startup_Update_All_Labels = Config.get("Application", "Startup_Update_All_Labels")
                 Topic_Publish_ZoneState = Config.get("MQTT Topics", "Topic_Publish_ZoneState")
                 Topic_Publish_ArmState = Config.get("MQTT Topics", "Topic_Publish_ArmState")
+                Topic_Publish_Heartbeat  = Config.get("MQTT Topics", "Topic_Publish_Heartbeat")
+                Publish_Static_Topic = Config.get("MQTT Topics", "Publish_Static_Topic")
                 Debug_Mode = int(Config.get("Application", "Debug_Mode"))
+                Auto_Logoff = Config.get("Application", "Auto_Logoff")
+                Logoff_Delay = int(Config.get("Application", "Logoff_Delay"))
+
                 if Debug_Mode > 0:
                    logging.info("Setting loglevel to debug")
                    logging.debug("Logging Set to debug")
@@ -868,9 +1267,19 @@ if __name__ == '__main__':
 
                 logging.info("State01:Attempting connection to MQTT Broker: " + MQTT_IP + ":" + str(MQTT_Port))
                 client = mqtt.Client()
+
+                if mqtt_password == '':
+                    mqtt_password = None
+
+                if mqtt_username != '':
+                    client.username_pw_set(mqtt_username, mqtt_password)
+
+
+
                 client.on_connect = on_connect
                 client.on_message = on_message
 
+                client.will_set(Topic_Publish_Heartbeat,"OFF",qos=0,retain=False)
                 client.connect(MQTT_IP, MQTT_Port, MQTT_KeepAlive)
 
                 client.loop_start()
@@ -879,18 +1288,18 @@ if __name__ == '__main__':
 
                 logging.info("State01:MQTT client subscribed to control messages on topic: " + Topic_Subscribe_Control + "#")
 
-                client.publish(Topic_Publish_AppState,"State Machine 1, Connected to MQTT Broker",0,True)
+                client.publish(Topic_Publish_AppState,"State Machine 1, Connected to MQTT Broker",1,True)
 
                 State_Machine += 1
 
             except Exception, e:
 
-                logging.error( "MQTT connection error (" + str(attempts) + ": " + e.strerror)
+                logging.error( "MQTT connection error (" + str(attempts) + ": " + e)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
-                    logging.error( "State01:Error within State_Machine: {0}: {1}".format(State_Machine,e.strerror))
+                    logging.error( "State01:Error within State_Machine: {0}: {1}".format(State_Machine,e))
                     State_Machine -= 1
                     logging.error( "State01:Going to State_Machine: " + str(State_Machine))
                     attempts = 3
@@ -903,24 +1312,24 @@ if __name__ == '__main__':
                     logging.info("State machine 2 + polling: starting calarm communication again")
 
                 logging.info("State02:Connecting to IP Module")
-                client.publish(Topic_Publish_AppState, "State Machine 2, Connecting to IP Module...", 0, True)
+                client.publish(Topic_Publish_AppState, "State Machine 2, Connecting to IP Module...", 1, True)
 
                 comms = connect_ip150socket(IP150_IP, IP150_Port)
                 client.publish(Topic_Publish_AppState,
                                "State Machine 2, Connected to IP Module, unlocking...",
-                               0, True)
+                               1, True)
 
                 myAlarm = paradox(comms, 0, 3, Alarm_Event_Map, Alarm_Registry_Map)
 
-                if not myAlarm.login(passw, Debug_Mode):
+                if not myAlarm.login(passw,user, Debug_Mode):
                     logging.info("State02:Failed to login & unlock to IP module, check if another app is using the port. Retrying... ")
                     client.publish(Topic_Publish_AppState,
                                    "State Machine 2, Failed to login & unlock to IP module, check if another app is using the port. Retrying... ",
-                                   0, True)
+                                   1, True)
                     comms.close()
                     time.sleep(Poll_Speed * 20)
                 else:
-                    client.publish(Topic_Publish_AppState, "State Machine 2, Logged into IP Module successfully", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 2, Logged into IP Module successfully", 1, True)
                     logging.info("State02: Logged into IP modeule successfully")
                     State_Machine += 1
                     speciallogging = False
@@ -929,13 +1338,13 @@ if __name__ == '__main__':
 
                 logging.error( "State02:Error attempting connection to IP module ({0}): {1}".format(attempts, e))
                 client.publish(Topic_Publish_AppState,
-                               "State Machine 2, Exception, retrying... ({0}): {1}".format(attempts, e),0, True)
+                               "State Machine 2, Exception, retrying... ({0}): {1}".format(attempts, e),1, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
                     logging.error("State02:Error within State_Machine: " + str(State_Machine) + ": " + repr(e))
-                    client.publish(Topic_Publish_AppState, "State Machine 2, Error, moving to previous state", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 2, Error, moving to previous state", 1, True)
                     State_Machine -= 1
                     logging.error("Going to State_Machine: " + str(State_Machine))
                     attempts = 3
@@ -948,29 +1357,32 @@ if __name__ == '__main__':
 
                 if Startup_Update_All_Labels == "True" and myAlarm.skipLabelUpdate() == 0:
                     logging.info("State03: Preading labels")
-                    client.publish(Topic_Publish_AppState, "State Machine 3, Reading labels from alarm", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 3, Reading labels from alarm", 1, True)
 
                     logging.info("State03:Updating all labels from alarm")
                     myAlarm.updateAllLabels(Startup_Publish_All_Info, Topic_Publish_Labels, Debug_Mode)
 
+                    logging.info("State03:Updating zone and alarm status")
+                    myAlarm.updateZoneAndAlarmStatus(Startup_Publish_All_Info, Debug_Mode)
+
                     State_Machine += 1
                     logging.info("State03:Listening for events...")
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
                 else:
 
                     State_Machine += 1
                     logging.info("State03:Listening for events...")
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
             except Exception, e:
 
                 logging.error("State03:Error reading labels: %s " % repr(e))
-                client.publish(Topic_Publish_AppState, "State Machine 3, Exception: {0}".format(e.strerror), 0, True)
+                client.publish(Topic_Publish_AppState, "State Machine 3, Exception: {0}".format(e), 1, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
                 if attempts < 1:
-                    logging.error("State03:Error within State_Machine: {0}: {1}".format(State_Machine, e.strerror))
-                    client.publish(Topic_Publish_AppState, "State Machine 3, Error, moving to previous state", 0, True)
+                    logging.error("State03:Error within State_Machine: {0}: {1}".format(State_Machine, e))
+                    client.publish(Topic_Publish_AppState, "State Machine 3, Error, moving to previous state", 1, True)
                     State_Machine -= 1
                     logging.error("State03:Going to State_Machine: " + str(State_Machine))
 
@@ -984,30 +1396,36 @@ if __name__ == '__main__':
                     logging.info("State04: Special logging (polling enabled)")
 
                 # Test for new events & publish to broker
-                myAlarm.testForEvents(Events_Payload_Numeric, Debug_Mode)
+                interrupt = myAlarm.testForEvents(Events_Payload_Numeric, Publish_Static_Topic, Debug_Mode)
+
+                if interrupt == 1:
+                    interruptCountdown = Logoff_Delay
+                    State_Machine = 20
+                    interrupt = 0
+
 
                 # Test for pending Alarm Control
                 if Alarm_Control_Action == 1:
                     logging.info("State04: Alarm Control Action: Alarm loging and starting events")
-                    myAlarm.login(passw)
+                    myAlarm.login(passw,user)
                     myAlarm.controlAlarm(Alarm_Control_Partition, Alarm_Control_NewState, Debug_Mode)
                     Alarm_Control_Action = 0
                     logging.info("State04:Listening for events...")
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
 
                 # Test for pending Force Output Control
                 if Output_FControl_Action == 1:
                     logging.info("State04:OutputFControl_Action: Loging and listenting")
-                    myAlarm.login(passw)
+                    myAlarm.login(passw,user)
                     myAlarm.controlPGM(Output_FControl_Number, Output_FControl_NewState, Debug_Mode)
                     Output_FControl_Action = 0
                     logging.info("State04:Listening for events...")
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
 
                 # Test for pending Pulse Output Control
                 if Output_PControl_Action == 1:
                     logging.info("State04:OutputPControl_Action:Loging and listenting")
-                    myAlarm.login(passw)
+                    myAlarm.login(passw,user)
                     myAlarm.controlPGM(Output_PControl_Number, Output_PControl_NewState, Debug_Mode)
                     time.sleep(0.5)
                     if Output_PControl_NewState.upper() == "ON":
@@ -1017,16 +1435,26 @@ if __name__ == '__main__':
 
                     Output_PControl_Action = 0
                     logging.info("State04:Listening for events...")
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
 
                 time.sleep(Polling_Enabled)
-                #logging.info("Calling keepalive")
+                
+                logging.info("Calling keepalive " + str(keepalivecount))
                 myAlarm.keepAlive(Debug_Mode)
+                keepalivecount = keepalivecount + 1
+                #myAlarm.keepAlivePAI(Debug_Mode)
+                #    keepalivecount = keepalivecount + 1
+                #else:
+                #logging.debug("Calling modified keep alive")
+                #print("Calling modified keep alive")
+                #myAlarm.updateZoneAndAlarmStatus("False", Debug_Mode)
+                #keepalivecount = 0
+
 
             except Exception, e:
 
                 logging.error("State04:Error during normal poll: {0}, Attemp: {1}".format(e.message,attempts))
-                client.publish(Topic_Publish_AppState, "State Machine 4, Exception: {0}".format(e.message), 0, True)
+                client.publish(Topic_Publish_AppState, "State Machine 4, Exception: {0}".format(e.message), 1, True)
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
                 logging.error("State04:Setting state machine to 1, hoping it will try to login to panal again.")
@@ -1036,7 +1464,7 @@ if __name__ == '__main__':
                     logging.error("State04:Error within State_Machine: {0}: {1}".format(str(State_Machine), e.message))
                     State_Machine -= 1
                     logging.error("State04:Going to State_Machine: " + str(State_Machine))
-                    client.publish(Topic_Publish_AppState, "State Machine 4, Error, moving to previous state", 0, True)
+                    client.publish(Topic_Publish_AppState, "State Machine 4, Error, moving to previous state", 1, True)
                     attempts = 3
                 logging.error("State04:Passing on the error: " + str(State_Machine))
                 speciallogging = True
@@ -1046,16 +1474,29 @@ if __name__ == '__main__':
         elif Polling_Enabled == 0 and State_Machine <= 4:
 
             logging.info("State04:Disabling polling & disconnecting from Alarm")
-            client.publish(Topic_Publish_AppState, "Polling: Disabled", 0, True)
+            client.publish(Topic_Publish_AppState, "Polling: Disabled", 1, True)
             comms.close()
             State_Machine = 10
 
             logging.info("State04:Polling Disabled")
 
-        elif Polling_Enabled == 1:
+        elif Polling_Enabled == 1 and State_Machine <= 4:
             logging.info("Polling enabled false, setting statement 2")
             State_Machine = 2
 
         elif State_Machine == 10:
             logging.info("State10: Sleep")
             time.sleep(3)
+
+        elif State_Machine == 20:
+            logging.info("State20: 3rd Party interrupted")
+            myAlarm.disconnect()
+            comms.shutdown(1)
+            comms.close()
+
+            for x in range(0, interruptCountdown):
+                if x % 5 == 0:
+                    logging.info("Delay remaining: " + str(interruptCountdown - x) + " seconds")
+                time.sleep(1)
+
+            State_Machine = 2
