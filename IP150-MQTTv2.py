@@ -376,10 +376,10 @@ class paradox:
         #eg PIN of 1234 should be added as b'\x12' b'\x34' not converted.
         #pcpasswordhex = bytes.fromhex(pcpassword)
         
-        #pcpassword = b'\x97\x72'
+        #pcpassword = b'\x12\x34'
         #message += pcpassword
-        message += b'\x92'
-        message += b'\x72'
+        message += b'\x12'
+        message += b'\x34'
         #print "COMMS MESSAGE  : {}{}".format(hex(ord(pcpasswordhex[0])),hex(ord(pcpasswordhex[1])))
         #print "COMMS MESSAGE  : {}".format(hex(i))
         #message += 
