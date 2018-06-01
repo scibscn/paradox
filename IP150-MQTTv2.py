@@ -374,15 +374,8 @@ class paradox:
         
         #need to work out how to get pcpassword (PIN) form Config which) to hex string.
         #eg PIN of 1234 should be added as b'\x12' b'\x34' not converted.
-        #pcpasswordhex = bytes.fromhex(pcpassword)
-        
-        #pcpassword = b'\x12\x34'
-        #message += pcpassword
-        message += b'\x12'
-        message += b'\x34'
-        #print "COMMS MESSAGE  : {}{}".format(hex(ord(pcpasswordhex[0])),hex(ord(pcpasswordhex[1])))
-        #print "COMMS MESSAGE  : {}".format(hex(i))
-        #message += 
+        hex_data = pcpassword.decode("hex")
+        message += hex_data
 
         message += '\x19\x00\x00'
         message += reply[31:39]
