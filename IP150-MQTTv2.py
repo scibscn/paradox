@@ -24,6 +24,10 @@ import json
 #   and have added the pc password into the authentication this needs to refence the config.ini
 # - Deciphering the panel status message 0 for panel time, vdc and battery
 # - Will start deciphering the other messages as they given partition and zone status.
+# - Added new config item Topic_Publish_status
+# - Changed heartbeat to just the status 0 message and not every time.
+# - Figured out arm (message 2 event 14 is full arm, message 2, event 12 is sleep arm)
+#
 # 2018-05-12
 # - Deciphering the heartbeat request - which is actually the udpatezonestatus call.
 #   this includes the arm/disarm state and battery voltage.
@@ -73,6 +77,7 @@ Topic_Publish_AppState = "Paradox/State"
 Topic_Publish_ZoneState = "Paradox/Zone"
 Topic_Publish_ArmState = "Paradox/Partition"
 Topic_Publish_Heartbeat = "Paradox/Heatbeat"
+Topic_Publish_Status = "Topic_Publish_Status"
 Publish_Static_Topic = 0
 Alarm_Model = "ParadoxMG5050"
 Alarm_Registry_Map = "ParadoxMG5050"
@@ -620,6 +625,7 @@ class paradox:
                     logging.debug("Event data: " + " ".join(hex(ord(i)) for i in message))
 
                 if len(message) > 0:
+                    # live event
                     if message[0] == '\xe2' or message[0] == '\xe0':
 
                         try:
@@ -634,7 +640,14 @@ class paradox:
 
                                 reply = "Event:" + event + ";SubEvent:" + subevent
 
-                                print str(ord(message[7]))
+                                print "Events 7-{} 8-{}".format(ord(message[7]),ord(message[8]))
+                                if self.zoneNames is not None:
+                                    zonename = self.zoneNames[ord(message[8])]
+                                    if zonename != location:
+                                        logging.info("Zonename from labels {0} does not match event location {1}, updating".format(zonename,location))
+                                        self.zoneNames[ord(message[8])]= location
+                                    else:
+                                        print "zones {0} matches location {1} ".format(zonename,location)
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
                                 if ord(message[7]) == 0:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "OFF"))
@@ -646,6 +659,7 @@ class paradox:
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "disarm"))
                                     client.publish(Topic_Publish_ArmState ,"OFF", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 12 or ord(message[8]) == 14):   #arm
+                                    #12 is sleep arm, 14 is full arm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
                                     client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
                                 elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
@@ -677,6 +691,14 @@ class paradox:
 
                     elif message[0] == '\x75' and message[1] == '\x49':
                         interrupt = 1
+                    elif (message[0] == '\x52' or message[0] == 'x50') and message[2] =='\x80':
+                        logging.debug("KEEP ALIVE REPLY FOUND********************{}*******".format(ord(message[3])) +  " ".join(hex(ord(i)) for i in message))
+                        if ord(message[3]) == 0:
+                            self.keepAliveStatus0(message, Debug_Mode)
+                        elif ord(message[3]) == 1:
+                            self.keepAliveStatus1(message, Debug_Mode)
+                        else:
+                            logging.debug("Other Keepalive Sequence reply: {}".format(ord(message[3])))
                     else:
                         reply = "Unknown event: " + " ".join(hex(ord(i)) for i in message)
 
@@ -741,9 +763,9 @@ class paradox:
             try:
                 if Debug_Mode >= 2:
                     logging.debug(str(len(request)) + "->   " + " ".join(hex(ord(i)) for i in request))
-                if len(request) == 0: # heartbeart
-                    logging.info("Publishing heartbeat event")
-                    client.publish(Topic_Publish_Heartbeat,"ON")
+                #if len(request) == 0: # heartbeart
+                #    logging.info("Publishing heartbeat event")
+                #    client.publish(Topic_Publish_Heartbeat,"ON")
 
                 self.sendData(request)
                 inc_data = self.comms.recv(1024)
@@ -891,7 +913,8 @@ class paradox:
         battery = round(ord(data[17])*22.8/255.0,1)
         jsondata = json.dumps({"paneldate":paneldatetime,"vdc":vdc,"dc":dc,"battery":battery})
         logging.info("Publishing panel status json: '{}'".format(jsondata))
-        client.publish("Paradox/Status/{0}".format(self.aliveSeq),jsondata)
+        client.publish(Topic_Publish_Status + "/{0}".format(self.aliveSeq),jsondata)
+        client.publish(Topic_Publish_Heartbeat,"ON")
         print "battery: {}".format(battery)
 
         bit = 0
@@ -908,6 +931,7 @@ class paradox:
                     location = self.zoneNames[itemNo]
                     if len(location) > 0:
                         print "Publishing initial zone state (state: {}, zone number: {} Zone {})".format( zoneState,itemNo,location)
+                        client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
         #     if itemNo in self.zoneNames.keys():
         #       location = self.zoneNames[itemNo]
         #       if len(location) > 0:
@@ -950,13 +974,39 @@ class paradox:
             partition1status1 = partition1status1 / 2
             itemNo = y + 1
             zoneState = "ON" if bit else "OFF"
-            print "Publishing initial zone state (state: {}, zone: {})".format( zoneState, itemNo)
+            print "Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+            logging.debug("Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo))
+            if itemNo == 1:
+                #alarm disarmed
+                logging.debug("Publishing Partition Arm state (state: {}, bit: {})".format( zoneState, itemNo))
+                client.publish(Topic_Publish_ArmState,zoneState,qos=1,retain=True)
             #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
             #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
         
         partition1status2 = ord(data[18])
+        for y in range(8):
+            bit = partition1status2 & 1
+            partition1status2 = partition1status2 / 2
+            itemNo = y + 1
+            zoneState = "ON" if bit else "OFF"
+            print "Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+            logging.debug("Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo))
         partition1status3 = ord(data[19])
+        for y in range(8):
+            bit = partition1status3 & 1
+            partition1status3 = partition1status3 / 2
+            itemNo = y + 1
+            zoneState = "ON" if bit else "OFF"
+            print "Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+            logging.debug("Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo))
         partition1status4 = ord(data[20])
+        for y in range(8):
+            bit = partition1status4 & 1
+            partition1status4 = partition1status4 / 2
+            itemNo = y + 1
+            zoneState = "ON" if bit else "OFF"
+            print "Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+            logging.debug("Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo))
         
         print "partition 1 status: {} {} {} {}".format(partition1status1,partition1status2,partition1status3,partition1status4)
         
@@ -970,6 +1020,7 @@ class paradox:
         #jsondata = json.dumps({"paneldate":paneldatetime,"vdc":vdc,"dc":dc,"battery":battery})
         #logging.info("Publishing panel status json: '{}'".format(jsondata))
         #client.publish("Paradox/Status/{0}".format(self.aliveSeq),jsondata)
+        #client.publish(Topic_Publish_Status/ + "{0}".format(self.aliveSeq)
 
     def keepAlive(self, Debug_Mode=0):
 
@@ -983,8 +1034,13 @@ class paradox:
                   #"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd0\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
         message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         message = self.format37ByteMessage(message)
-        #self.sendData(header + message)
-        reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+        reply = ""
+        if self.aliveSeq == 10 or self.aliveSeq == 11:
+            reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+        else: 
+            print "***** SEQUENCE {}".format(self.aliveSeq)
+            self.sendData(header + message)
+        
         if len(reply) > 0:
             print "heart beat reply status " + str(self.aliveSeq) + " : <--" + " ".join(hex(ord(i)) for i in reply)
             data = reply[16:]
@@ -1242,7 +1298,9 @@ if __name__ == '__main__':
                 Topic_Publish_ZoneState = Config.get("MQTT Topics", "Topic_Publish_ZoneState")
                 Topic_Publish_ArmState = Config.get("MQTT Topics", "Topic_Publish_ArmState")
                 Topic_Publish_Heartbeat  = Config.get("MQTT Topics", "Topic_Publish_Heartbeat")
+                Topic_Publish_Status  = Config.get("MQTT Topics", "Topic_Publish_Status")
                 Publish_Static_Topic = Config.get("MQTT Topics", "Publish_Static_Topic")
+
                 Debug_Mode = int(Config.get("Application", "Debug_Mode"))
                 Auto_Logoff = Config.get("Application", "Auto_Logoff")
                 Logoff_Delay = int(Config.get("Application", "Logoff_Delay"))
@@ -1440,7 +1498,7 @@ if __name__ == '__main__':
                     logging.info("State04:Listening for events...")
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
 
-                time.sleep(Polling_Enabled)
+                time.sleep(1)
                 
                 logging.info("Calling keepalive " + str(keepalivecount))
                 myAlarm.keepAlive(Debug_Mode)
@@ -1503,3 +1561,4 @@ if __name__ == '__main__':
                 time.sleep(1)
 
             State_Machine = 2
+
