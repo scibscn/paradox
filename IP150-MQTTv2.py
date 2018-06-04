@@ -969,7 +969,7 @@ class paradox:
         #Panel Status 1 - Partition Status 
         partition1status1 = ord(data[17])
         
-        armstate = "off"
+        armstate = "DISARMED"
         for y in range(8):
             bit = partition1status1 & 1
             partition1status1 = partition1status1 / 2
@@ -982,7 +982,7 @@ class paradox:
                 logging.debug("Publishing Partition Arm state (state: {}, bit: {})".format( zoneState, itemNo))
                 client.publish(Topic_Publish_ArmState,zoneState,qos=1,retain=True)
                 if zoneState == "ON":
-                    armstate = "ON"
+                    armstate = "ARMED"
             elif itemNo == 2: # sleep
                 if zoneState == "ON":
                     armstate = "SLEEP"
