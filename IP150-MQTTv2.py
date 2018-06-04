@@ -19,6 +19,10 @@ import json
 ################################################################################################
 # Change History
 ################################################################################################
+# 2018-06-05
+# - Added Zone Status messages to Status 0 Heartbeat (testfor events)
+# - Added Partition 1 status checked to test for events (status 1 heartbeat) - will also post 
+#   Paradox/Parition/Status of ARMED, DISARMED, SLEEP and STAY 
 # 2018-06-01
 # - Working in the Panel Status messages showed that we were not logging in correctly
 #   and have added the pc password into the authentication this needs to refence the config.ini
@@ -658,10 +662,17 @@ class paradox:
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 11 or ord(message[8]) == 3):   #Disarm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "disarm"))
                                     client.publish(Topic_Publish_ArmState ,"OFF", qos=1, retain=True)
-                                elif ord(message[7]) == 2 and (ord(message[8]) == 12 or ord(message[8]) == 14):   #arm
-                                    #12 is sleep arm, 14 is full arm
+                                    client.publish(Topic_Publish_ArmState + "/Status" ,"DISARMED", qos=1, retain=True)
+                                elif ord(message[7]) == 2 and (ord(message[8]) == 12 ):   #SLEEP
+                                    #12 is sleep arm, 14 is full arm- is STAY 13?
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
                                     client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
+                                    client.publish(Topic_Publish_ArmState + "/Status" ,"SLEEP", qos=1, retain=True)
+                                elif ord(message[7]) == 2 and (ord(message[8]) == 14):   #arm
+                                    #12 is sleep arm, 14 is full arm - is STAY 13?
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
+                                    client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
+                                    client.publish(Topic_Publish_ArmState + "/Status" ,"ARMED", qos=1, retain=True)
                                 elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
                                     print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
                                     if message[8]:
