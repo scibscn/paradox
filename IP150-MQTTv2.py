@@ -663,12 +663,17 @@ class paradox:
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "disarm"))
                                     client.publish(Topic_Publish_ArmState ,"OFF", qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"DISARMED", qos=1, retain=True)
-                                elif ord(message[7]) == 2 and (ord(message[8]) == 12 ):   #SLEEP
+                                elif ord(message[7]) == 6 and (ord(message[8]) == 4 ):   #SLEEP
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
                                     client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"SLEEP", qos=1, retain=True)
-                                elif ord(message[7]) == 2 and (ord(message[8]) == 14):   #arm
+                                elif ord(message[7]) == 6 and (ord(message[8]) == 3 ):   #STAY
+                                    #12 is sleep arm, 14 is full arm- is STAY 13?
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
+                                    client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
+                                    client.publish(Topic_Publish_ArmState + "/Status" ,"STAY", qos=1, retain=True)
+                                elif ord(message[7]) == 2 and (ord(message[8]) == 12):   #arm
                                     #12 is sleep arm, 14 is full arm - is STAY 13?
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
                                     client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
