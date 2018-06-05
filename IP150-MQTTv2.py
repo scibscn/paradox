@@ -935,15 +935,17 @@ class paradox:
         print "dateTime: {}".format(paneldatetime)
         vdc = round(ord(data[15])*(20.3-1.4)/255.0+1.4,1)
         #vdc = ord(data[15])
-        print "VDC: {}".format(vdc) 
+        logging.debug("VDC: {}".format(vdc) )
         dc = round(ord(data[16])*22.8/255.0,1)
-        print "DC: {}".format(dc)
+        logging.debug("DC: {}".format(dc))
         battery = round(ord(data[17])*22.8/255.0,1)
+        logging.debug("battery: {}".format(battery))
+
         jsondata = json.dumps({"paneldate":paneldatetime,"vdc":vdc,"dc":dc,"battery":battery})
         logging.info("Publishing panel status json: '{}'".format(jsondata))
         client.publish(Topic_Publish_Status + "/{0}".format(self.aliveSeq),jsondata)
         client.publish(Topic_Publish_Heartbeat,"ON")
-        print "battery: {}".format(battery)
+        
 
         bit = 0
         zonebits = data[19:23]
@@ -958,7 +960,7 @@ class paradox:
                 if itemNo in self.zoneNames.keys():
                     location = self.zoneNames[itemNo]
                     if len(location) > 0:
-                        print "Publishing initial zone state (state: {}, zone number: {} Zone {})".format( zoneState,itemNo,location)
+                        logging.debug("Publishing initial zone state (state: {}, zone number: {} Zone {})".format( zoneState,itemNo,location))
                         client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
 
     def keepAliveStatus1(self, data, Debug_Mode):
