@@ -324,6 +324,7 @@ class paradox:
         else:
             loggedin = 0
             logging.info("Login request unsuccessful, panel returned: " + " ".join(hex(ord(reply[4]))))
+            return
 
         header = list(header)
 
@@ -360,7 +361,7 @@ class paradox:
         header[5] = '\x00'
         header2 = "".join(header)
         #Command 0x5F : Start communication
-        print "Command 0x5F : Start communication"
+        logging.info( "Command 0x5F : Start communication")
         message = '\x5f\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         message = self.format37ByteMessage(message)
         reply = self.readDataRaw(header2 + message, Debug_Mode)
@@ -390,7 +391,7 @@ class paradox:
         message += reply[31:39]
         message += '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00'
         message = self.format37ByteMessage(message)
-        print "Command 0x00 : Initialize communication"
+        logging.info( "Command 0x00 : Initialize communication")
         reply = self.readDataRaw(header2 + message, Debug_Mode)
 
         print "Command 0x50 : PC Status 0"
@@ -644,8 +645,11 @@ class paradox:
 
                                 reply = "Event:" + event + ";SubEvent:" + subevent
 
-                                print "Events 7-{} 8-{}".format(ord(message[7]),ord(message[8]))
-                                if self.zoneNames is not None:
+                                print "Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply)
+                                if Debug_Mode >= 1:
+                                    logging.debug("Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply))
+
+                                if (ord(message[7]) == 0 or ord(message[7]) ==1) and self.zoneNames is not None:
                                     zonename = self.zoneNames[ord(message[8])]
                                     if zonename != location:
                                         logging.info("Zonename from labels {0} does not match event location {1}, updating".format(zonename,location))
@@ -653,6 +657,7 @@ class paradox:
                                     else:
                                         print "zones {0} matches location {1} ".format(zonename,location)
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
+                                print "test message events"
                                 if ord(message[7]) == 0:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "OFF"))
                                     client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=1, retain=True)
@@ -948,38 +953,6 @@ class paradox:
                     if len(location) > 0:
                         print "Publishing initial zone state (state: {}, zone number: {} Zone {})".format( zoneState,itemNo,location)
                         client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
-        #     if itemNo in self.zoneNames.keys():
-        #       location = self.zoneNames[itemNo]
-        #       if len(location) > 0:
-        #         zoneState = "ON" if bit else "OFF"
-        #         print "Publishing initial zone state (state:" + zoneState + ", zone:" + location + ")"
-        #         #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
-        #         client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
-
-        #PAI Mthod
-        # Zone States
-        # Ignore the last zone (99 = Any Zone)
-        #for i in range(0, len(Alarm_Data['zone']) - 1 ):
-
-        #    bt = i % 8
-        #    if i != 0 and bt == 0:
-        #        b += 1
-            
-        #    if Alarm_Data['labels']['zoneLabel'][i+1].startswith("Zone "):
-        #        continue
-            
-        #    state = (ord(data[19 + b]) >> bt) & 0x01
-        #    if state == 0:
-        #        state  = "Zone OK"
-        #    else:
-        #        state = "Zone open"
-            
-        #    oldState = Alarm_Data['zone'][i]['state']
-        #    if oldState is None or oldState != state and ('open' in oldState or 'OK' in oldState):
-                
-        #        Alarm_Data['zone'][i]['state'] = state
-        #        
-        #        client.publish(Topic_Publish_Status+"/Zones/"+Alarm_Data['labels']['zoneLabel'][i + 1].replace(' ','_').title(), state, retain=True)
 
     def keepAliveStatus1(self, data, Debug_Mode):
         #Panel Status 1 - Partition Status 
@@ -991,8 +964,9 @@ class paradox:
             partition1status1 = partition1status1 / 2
             itemNo = y + 1
             zoneState = "ON" if bit else "OFF"
-            print "Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo)
-            logging.debug("Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo))
+            if Debug_Mode >= 1:
+                print "Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+                logging.debug("Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo))
             if itemNo == 1:
                 #alarm disarmed
                 logging.debug("Publishing Partition Arm state (state: {}, bit: {})".format( zoneState, itemNo))
