@@ -649,13 +649,20 @@ class paradox:
                                 if Debug_Mode >= 1:
                                     logging.debug("Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply))
 
-                                if (ord(message[7]) == 0 or ord(message[7]) ==1) and self.zoneNames is not None:
-                                    zonename = self.zoneNames[ord(message[8])]
-                                    if zonename != location:
-                                        logging.info("Zonename from labels {0} does not match event location {1}, updating".format(zonename,location))
-                                        self.zoneNames[ord(message[8])]= location
-                                    else:
-                                        print "zones {0} matches location {1} ".format(zonename,location)
+                                try:
+                                    if (ord(message[7]) == 0 or ord(message[7]) ==1) and (self.zoneNames is not None and len(self.zoneNames) > 0):
+                                        logging.debug("Message is a 1 or 0, and self.Zonenames not empty")
+                                        zonename = self.zoneNames[ord(message[8])]
+                                        logging.debug("Retrieved zonename")
+                                        if zonename != location:
+                                            logging.info("Zonename from labels {0} does not match event location {1}, updating".format(zonename,location))
+                                            self.zoneNames[ord(message[8])]= location
+                                        else:
+                                            logging.debug("Updating zone name to match location in live event")
+                                            print "zones {0} matches location {1} ".format(zonename,location)
+                                except Exception as ezone:
+                                        logging.error("Exception checking/updating zone names: {}".format(ezone.message))
+
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
                                 print "test message events"
                                 if ord(message[7]) == 0:
