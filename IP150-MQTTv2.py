@@ -81,6 +81,7 @@ Topic_Publish_AppState = "Paradox/State"
 Topic_Publish_ZoneState = "Paradox/Zone"
 Topic_Publish_ArmState = "Paradox/Partition"
 Topic_Publish_Heartbeat = "Paradox/Heatbeat"
+Publish_Status_Factor = 1
 Topic_Publish_Status = "Paradox/Status"
 Publish_Static_Topic = 0
 Alarm_Model = "ParadoxMG5050"
@@ -639,21 +640,21 @@ class paradox:
 
                                 event, subevent = self.eventmap.getEventDescription(ord(message[7]), ord(message[8]))
                                 location = message[15:30].strip().translate(None, '\x00')
-                                if location:
+                                if location and Debug_Mode >= 1:
                                     logging.debug("Event location: \"%s\"" % location)
                                     print "Event location: \"%s\"" % location
 
                                 reply = "Event:" + event + ";SubEvent:" + subevent
 
                                 print "Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply)
-                                if Debug_Mode >= 1:
+                                if Debug_Mode >= 2:
                                     logging.debug("Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply))
 
                                 try:
                                     if (ord(message[7]) == 0 or ord(message[7]) ==1) and (self.zoneNames is not None and len(self.zoneNames) > 0):
-                                        logging.debug("Message is a 1 or 0, and self.Zonenames not empty")
+                                        if Debug_Mode >= 2:
+                                            logging.debug("Message is a 1 or 0, and self.Zonenames not empty")
                                         zonename = self.zoneNames[ord(message[8])]
-                                        logging.debug("Retrieved zonename")
                                         if zonename != location:
                                             logging.info("Zonename from labels {0} does not match event location {1}, updating".format(zonename,location))
                                             self.zoneNames[ord(message[8])]= location
@@ -706,7 +707,8 @@ class paradox:
                             if Publish_Static_Topic == "1":
                                 client.publish(Topic_Publish_Events + "/" + str(ord(message[7])) + "/" + str(ord(message[8])), qos=1, retain=False)
 
-                            logging.debug("Message 7: {0} Message 8: {1}".format(ord(message[7]),ord(message[8])))
+                            if Debug_Mode >= 2:
+                                logging.debug("Message 7: {0} Message 8: {1}".format(ord(message[7]),ord(message[8])))
 
                             client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
 
@@ -720,12 +722,13 @@ class paradox:
                     elif message[0] == '\x75' and message[1] == '\x49':
                         interrupt = 1
                     elif (message[0] == '\x52' or message[0] == 'x50') and message[2] =='\x80':
-                        logging.debug("KEEP ALIVE REPLY FOUND********************{}*******".format(ord(message[3])) +  " ".join(hex(ord(i)) for i in message))
+                        if Debug_Mode >= 2:
+                            logging.debug("KEEP ALIVE REPLY FOUND********************{}*******".format(ord(message[3])) +  " ".join(hex(ord(i)) for i in message))
                         if ord(message[3]) == 0:
                             self.keepAliveStatus0(message, Debug_Mode)
                         elif ord(message[3]) == 1:
                             self.keepAliveStatus1(message, Debug_Mode)
-                        else:
+                        elif Debug_Mode >= 2:
                             logging.debug("Other Keepalive Sequence reply: {}".format(ord(message[3])))
                     else:
                         reply = "Unknown event: " + " ".join(hex(ord(i)) for i in message)
@@ -935,15 +938,20 @@ class paradox:
         print "dateTime: {}".format(paneldatetime)
         vdc = round(ord(data[15])*(20.3-1.4)/255.0+1.4,1)
         #vdc = ord(data[15])
-        logging.debug("VDC: {}".format(vdc) )
+        if Debug_Mode >= 1:
+            logging.debug("VDC: {}".format(vdc) )
         dc = round(ord(data[16])*22.8/255.0,1)
-        logging.debug("DC: {}".format(dc))
+        if Debug_Mode >= 1:
+            logging.debug("DC: {}".format(dc))
         battery = round(ord(data[17])*22.8/255.0,1)
-        logging.debug("battery: {}".format(battery))
+        if Debug_Mode >= 1:
+            logging.debug("battery: {}".format(battery))
 
         jsondata = json.dumps({"paneldate":paneldatetime,"vdc":vdc,"dc":dc,"battery":battery})
-        logging.info("Publishing panel status json: '{}'".format(jsondata))
-        client.publish(Topic_Publish_Status + "/{0}".format(self.aliveSeq),jsondata)
+        if keepalivecount % Publish_Status_Factor == 0:
+            logging.info("Publishing panel status json: '{}'".format(jsondata))
+            client.publish(Topic_Publish_Status + "/{0}".format(self.aliveSeq),jsondata)
+
         client.publish(Topic_Publish_Heartbeat,"ON")
         
 
@@ -960,8 +968,10 @@ class paradox:
                 if itemNo in self.zoneNames.keys():
                     location = self.zoneNames[itemNo]
                     if len(location) > 0:
-                        logging.debug("Publishing initial zone state (state: {}, zone number: {} Zone {})".format( zoneState,itemNo,location))
-                        client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
+                        if Debug_Mode >= 1:
+                            logging.debug("Publishing initial zone state (state: {}, zone number: {} Zone {})".format( zoneState,itemNo,location))
+                        if keepalivecount % Publish_Status_Factor == 0:
+                            client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
 
     def keepAliveStatus1(self, data, Debug_Mode):
         #Panel Status 1 - Partition Status 
@@ -978,8 +988,10 @@ class paradox:
                 logging.debug("Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo))
             if itemNo == 1:
                 #alarm disarmed
-                logging.debug("Publishing Partition Arm state (state: {}, bit: {})".format( zoneState, itemNo))
-                client.publish(Topic_Publish_ArmState,zoneState,qos=1,retain=True)
+                if Debug_Mode >= 1:
+                    logging.debug("Publishing Partition Arm state (state: {}, bit: {})".format( zoneState, itemNo))
+                if keepalivecount % Publish_Status_Factor == 0:
+                    client.publish(Topic_Publish_ArmState,zoneState,qos=1,retain=True)
                 if zoneState == "ON":
                     armstate = "ARMED"
             elif itemNo == 2: # sleep
@@ -988,8 +1000,10 @@ class paradox:
             elif itemNo == 3: #away
                 if zoneState == "ON":
                     armstate = "STAY"
-        logging.debug("Publishing Partition Arm state (state: {})".format( armstate))
-        client.publish(Topic_Publish_ArmState + "/Status",armstate,qos=1,retain=True)
+        if Debug_Mode >= 2:
+            logging.debug("Publishing Partition Arm state (state: {})".format( armstate))
+        if keepalivecount % Publish_Status_Factor == 0:
+            client.publish(Topic_Publish_ArmState + "/Status",armstate,qos=1,retain=True)
             #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
             #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
         
@@ -1000,7 +1014,8 @@ class paradox:
             itemNo = y + 1
             zoneState = "ON" if bit else "OFF"
             print "Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo)
-            logging.debug("Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo))
+            if Debug_Mode >= 2:
+                logging.debug("Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo))
         partition1status3 = ord(data[19])
         for y in range(8):
             bit = partition1status3 & 1
@@ -1008,7 +1023,8 @@ class paradox:
             itemNo = y + 1
             zoneState = "ON" if bit else "OFF"
             print "Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo)
-            logging.debug("Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo))
+            if Debug_Mode >= 2:
+                logging.debug("Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo))
         partition1status4 = ord(data[20])
         for y in range(8):
             bit = partition1status4 & 1
@@ -1016,16 +1032,17 @@ class paradox:
             itemNo = y + 1
             zoneState = "ON" if bit else "OFF"
             print "Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo)
-            logging.debug("Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo))
-        
-        print "partition 1 status: {} {} {} {}".format(partition1status1,partition1status2,partition1status3,partition1status4)
+            if Debug_Mode >= 2:
+                logging.debug("Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo))
+                print "partition 1 status: {} {} {} {}".format(partition1status1,partition1status2,partition1status3,partition1status4)
         
         partition2status1 = ord(data[21])
         partition2status2 = ord(data[22])
         partition2status3 = ord(data[23])
         partition2status4 = ord(data[24])
         
-        print "partition 2 status: {} {} {} {}".format(partition2status1,partition2status2,partition2status3,partition2status4)
+        if Debug_Mode >= 2:
+            print "partition 2 status: {} {} {} {}".format(partition2status1,partition2status2,partition2status3,partition2status4)
 
         #jsondata = json.dumps({"paneldate":paneldatetime,"vdc":vdc,"dc":dc,"battery":battery})
         #logging.info("Publishing panel status json: '{}'".format(jsondata))
@@ -1044,162 +1061,12 @@ class paradox:
                   #"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd0\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
         message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         message = self.format37ByteMessage(message)
-        reply = ""
-        if self.aliveSeq == 10 or self.aliveSeq == 11:
-            reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
-        else: 
-            print "***** SEQUENCE {}".format(self.aliveSeq)
-            self.sendData(header + message)
+        print "***** SEQUENCE {}".format(self.aliveSeq)
+        self.sendData(header + message)
         
-        if len(reply) > 0:
-            print "heart beat reply status " + str(self.aliveSeq) + " : <--" + " ".join(hex(ord(i)) for i in reply)
-            data = reply[16:]
-            print "heart beat status 0 reply: <--" + " ".join(hex(ord(i)) for i in data)
-            print "Value 16 ({}) and 17 ({}) ".format(ord(data[0]), ord(data[1]))
-            if data[1] == '\x00' and (data[0] == '\x50' or data[0] == '\x52') and ord(data[3]) == self.aliveSeq:
-                if self.aliveSeq == 0:
-                    self.keepAliveStatus0(data,Debug_Mode)
-                elif self.aliveSeq == 1:
-                    self.keepAliveStatus1(data,Debug_Mode)
-                else:
-                    print "***** SEQUENCE {}".format(self.aliveSeq)
-            else:
-                print "Value 16 ({}) and 17 ({}) ".format(ord(data[0]), ord(data[1]))
-        else:
-            print "no reply received"
         self.aliveSeq += 1
         if self.aliveSeq > 6:
             self.aliveSeq = 0
-
-    
-    def keepAlivePAI(self, Debug_Mode=0):
-
-        global Alarm_Data
-
-        aliveSeq = 0
-        header = "\xaa\x25\x00\x04\x08\x00\x00\x14\xee\xee\xee\xee\xee\xee\xee\xee"
-    
-        while aliveSeq < 3:
-            message = "\x50\x00\x80"
-            message += bytes(bytearray([aliveSeq]))
-            message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-
-
-            data = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
-            data = data[16:]
-            print "keepAlivePAI Response: " + str(self.aliveSeq) + " : <--" + " ".join(hex(ord(i)) for i in data)   
-            if len(data) != 37 or ord(data[0]) != 0x52 or ord(data[3]) != aliveSeq:
-                logger.warn("Invalid message")
-                if data is not None and len(data) > 0:
-                    m = str(len(data)) + " <- "                
-
-                    for c in data:
-                        m += " %02x" % ord(c)
-                    logger.debug(m)
-                return
-
-            if aliveSeq == 0:
-                print "dateTime: {}-{}-{} {}:{}".format(ord(data[9])*100 + ord(data[10]),
-                        ord(data[11]),
-                        ord(data[12]),
-                        ord(data[13]),
-                        ord(data[14]))
-                #Alarm_Data['date_time'] = {"year": ,
-                #        "month": ord(data[11]),
-                #        "day": ord(data[12]),
-                #        "hours": ord(data[13]),
-                #        "minutes": ord(data[14])}
-                print "VDC: {}".format(round(ord(data[15])*(20.3-1.4)/255.0+1.4,1)) 
-                print "DC: {}".format(round(ord(data[16])*22.8/255.0,1))
-                print "battery: {}".format(round(ord(data[17])*22.8/255.0,1))
-                #voltage =   {'vdc': round(ord(data[15])*(20.3-1.4)/255.0+1.4,1) , 
-                #            'dc': round(ord(data[16])*22.8/255.0,1),
-                #            'battery': round(ord(data[17])*22.8/255.0,1)}
-
-                #if not 'voltage' in Alarm_Data.keys() or \
-                #    abs(voltage['vdc'] - Alarm_Data['voltage']['vdc']) > 0.3 or abs(voltage['dc'] - Alarm_Data['voltage']['dc']) > 0.3 or abs(voltage['battery'] - Alarm_Data['voltage']['battery']) > 0.3:
-                # 
-                #    client.publish(Topic_Publish_Battery, json.dumps(voltage), retain=True)
-                #    Alarm_Data['voltage'] = voltage
-                
-                b = 0
-                bt = 0
-
-                ## Ignore the last zone (99 = Any Zone)
-                #for i in range(0, len(Alarm_Data['zone']) - 1 ):
-
-                #    bt = i % 8
-                #    if i != 0 and bt == 0:
-                #        b += 1
-                    
-                #    if Alarm_Data['labels']['zoneLabel'][i+1].startswith("Zone "):
-                #        continue
-                    
-                #    state = (ord(data[19 + b]) >> bt) & 0x01
-                #    if state == 0:
-                #        state  = "Zone OK"
-                #    else:
-                #        state = "Zone open"
-                    
-                #    oldState = Alarm_Data['zone'][i]['state']
-                #    if oldState is None or oldState != state and ('open' in oldState or 'OK' in oldState):
-                        
-                #        Alarm_Data['zone'][i]['state'] = state
-                #        
-                #        client.publish(Topic_Publish_Status+"/Zones/"+Alarm_Data['labels']['zoneLabel'][i + 1].replace(' ','_').title(), state, retain=True)
-                       
-            #elif aliveSeq == 1:
-            #    changed = False
-
-                #for i in [0, 1]:
-                #    state = 0
-
-                    # Arming
-                #    if ord(data[18 + i * 4]) == 0x01:
-                #        state = "Arm"
-                #    elif ord(data[17 + i * 4]) == 0x01:
-                #        state = "Arm"
-                #    else:
-                #        state  = "Disarm"
-
-                #    if Alarm_Data['partition'][i] != state:
-                #        client.publish(Topic_Publish_Status + "/Partitions/%d" % (i + 1), str(state), retain=True )
-                #        Alarm_Data['partition'][i] = state
-                #        changed = True
-                
-                #if changed:
-                    # See if all partitions are in the same state
-                #    states = dict()
-                #    for p in Alarm_Data['partition']:
-                #        states[p] = 1
-
-                #    if len(states.keys()) == 1:
-                #        client.publish(Topic_Publish_Status + "/Partitions/All", str(states.keys()[0]), retain=True )
-                #    else:
-                #        client.publish(Topic_Publish_Status + "/Partitions/All", "Mixed", retain=True )
-            
-            #elif aliveSeq == 2:
-                #for i in range(0, len(Alarm_Data['zone']) - 1 ):
-                #    state = ord(data[4 + i])
-                #    changed = False
-
-                #    if state & 0x08 != 0:
-                #        if not Alarm_Data['zone'][i]['bypass']:
-                #            changed = True
-                #        Alarm_Data['zone'][i]['bypass'] = True
-                #    else:
-                #        if Alarm_Data['zone'][i]['bypass']:
-                #            changed = True
-                #        Alarm_Data['zone'][i]['bypass'] = False
-                
-                #    if changed:
-                #        m = Alarm_Data['zone'][i]['state']
-                #        if Alarm_Data['zone'][i]['bypass']:
-                #            m += " (Bypass)"
-
-                #        client.publish(Topic_Publish_Status+"/Zones/"+Alarm_Data['labels']['zoneLabel'][i + 1].replace(' ','_').title(), m, retain=True)
-
-            aliveSeq += 1
 
     def walker(self, ):
         self.zoneTotal = Zone_Amount
@@ -1308,6 +1175,7 @@ if __name__ == '__main__':
                 Topic_Publish_ZoneState = Config.get("MQTT Topics", "Topic_Publish_ZoneState")
                 Topic_Publish_ArmState = Config.get("MQTT Topics", "Topic_Publish_ArmState")
                 Topic_Publish_Heartbeat  = Config.get("MQTT Topics", "Topic_Publish_Heartbeat")
+                Publish_Status_Factor = int(Config.get("MQTT Topics","Publish_Status_Factor"))
                 Topic_Publish_Status  = Config.get("MQTT Topics", "Topic_Publish_Status")
                 Publish_Static_Topic = Config.get("MQTT Topics", "Publish_Static_Topic")
 
