@@ -13,7 +13,7 @@ Confirmed supported systems: See the [wiki](../../wiki) (please let me know if y
 3.  Copy the config-master.ini to config.ini file and edit to configure.
 4.  Run the script: Python IP150-MQTTv2.py
 
-NOTE: as at July-2017, there is not a configuration item for the location of the log directory.  See this in the config.
+NOTE: as at July-2017, there is now a configuration item for the location of the log directory.  See this in the config.
 
 
 ## What happens in the background:
@@ -28,6 +28,8 @@ Seeing as not all alarm variants are initially supported, you can use the config
 If successfully connected to your IP150 and MQTT broker, the app will optionally start off by publishing (once-off) all the detected labels (zone, partition, output, etc. names) to your broker. Both the reading of label names and publishing thereof can be independantly controlled through the config.ini file. If you do read the labels, events such as "Zone open - Zone number 3" will translate to "Zone open - Garage door" or "Low battery on zone - Zone 1" to "Low battery on zone - Alley Beam" (assuming this is named/configured as such in your alarm).
 
 Note: on a Spectre SP5500 these labels do not seem to read.  To this end, I've updated to pull the zone name from the event message and will publish an MQTT topic for the zone name.
+
+Further Note, with version from 2018-06-05 - The issue was the lack of Pincode (PC Password in winload).  Enter this now, and labels will appear on SP based panels.  And you can also get startup/and periodic updates for partition status, voltages and zone status'
 
 * Zone Labels:
   * Topic: <b>Paradox/Labels/Zones</b>
@@ -70,11 +72,24 @@ Once the script has settled to listen for events, the following topics are avail
     * etc.....
 
   * Topic <b>Paradox/Zones/<i>zone label</i></b>
-  Sets a status for on of off for each zone.  Allows Openhab to easily configure an item for each zone
+  Sets a status for on of off for each zone.  Allows Openhab?Home Assistant to easily configure an item for each zone
 
   * Topic <b>Paradox/Partition</b>
-  Shows the current partition status.  Can't be determines on startup though, only while running. 
+  Shows the current partition status (<i>ON</i>/<i>OFF</i>).  Can't be determines on startup though (unless you've updated the Pincode), only while running.     If a valid pincode is entered in the configuration file, the parition status will be updated every 6 seconds.
+  
+  * Topic <b>Paradox/Partition/Status</b>
+  Shows <i>ARMED</i>, <i>DISARMED</i>, <i>SLEEP</i> and <i>STAY</i> for the arming type of the partition (only partition 1 at this stage), and I may need to move this to a Paradox/P1 /P2 type structure.
 
+  * Topic <b>Paradox/Status/1</b>
+  A Json object with the voltages of the panel for example:
+   {"battery": 13.3, "vdc": 16.8, "dc": 13.7, "paneldate": "2018-6-6 8:37"}
+   Note the panel date, while not present yet, I do know the command for updating the time of the panel...
+
+  * Topic <b>Paradox/Heartbeat</b>
+  A topic that can be used to determine if a connection to the panel is present, or the script is running.  This is set as the last will and testament, and so if the script exits, it will default back to OFF.
+  
+  
+  
 ### Controls
 * Controlling the alarm or outputs
   * Publish the following topic to control the <b>alarm</b>:
