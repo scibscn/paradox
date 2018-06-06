@@ -13,17 +13,23 @@ import logging.handlers
 import os.path
 import json
 
+# Version 2.0.4
+
 # Alarm controls can be given in payload, e.g. Paradox/C/P1, payl = Disarm
 ################################################################################################
 #  Paradox IP Modile
 ################################################################################################
 # Change History
 ################################################################################################
-# 2018-06-05
+# 2018-06-07 2.0.4
+# - Added a heartbeat factor for limiting the publish amount for keep alive status'
+# - Reduce some of the logging for debug messages.
+#
+# 2018-06-05 2.0.3
 # - Added Zone Status messages to Status 0 Heartbeat (testfor events)
 # - Added Partition 1 status checked to test for events (status 1 heartbeat) - will also post 
 #   Paradox/Parition/Status of ARMED, DISARMED, SLEEP and STAY 
-# 2018-06-01
+# 2018-06-01 2.0.2
 # - Working in the Panel Status messages showed that we were not logging in correctly
 #   and have added the pc password into the authentication this needs to refence the config.ini
 # - Deciphering the panel status message 0 for panel time, vdc and battery
@@ -32,11 +38,11 @@ import json
 # - Changed heartbeat to just the status 0 message and not every time.
 # - Figured out arm (message 2 event 14 is full arm, message 2, event 12 is sleep arm)
 #
-# 2018-05-12
+# 2018-05-12 2.0.1
 # - Deciphering the heartbeat request - which is actually the udpatezonestatus call.
 #   this includes the arm/disarm state and battery voltage.
 
-# 2018-05-12
+# 2018-05-12 2.0.0
 # - Added heartbeat messsage and topic config
 # - Is added as the last will and testament - meaning on script end it is set to false
 
