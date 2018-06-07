@@ -13,7 +13,7 @@ import logging.handlers
 import os.path
 import json
 
-# Version 2.0.4
+# Version 2.0.5
 
 # Alarm controls can be given in payload, e.g. Paradox/C/P1, payl = Disarm
 ################################################################################################
@@ -1392,7 +1392,7 @@ if __name__ == '__main__':
                 
                 if Debug_Mode >= 2:
                     logging.info("Calling keepalive " + str(keepalivecount))
-                    
+
                 myAlarm.keepAlive(Debug_Mode)
                 keepalivecount = keepalivecount + 1
                 #myAlarm.keepAlivePAI(Debug_Mode)
