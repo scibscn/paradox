@@ -21,6 +21,9 @@ import json
 ################################################################################################
 # Change History
 ################################################################################################
+# 2018-06-08 2.0.5
+# - Reduced keep alive logging
+#
 # 2018-06-07 2.0.4
 # - Added a heartbeat factor for limiting the publish amount for keep alive status'
 # - Reduce some of the logging for debug messages.
@@ -652,8 +655,8 @@ class paradox:
 
                                 reply = "Event:" + event + ";SubEvent:" + subevent
 
-                                print "Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply)
                                 if Debug_Mode >= 2:
+                                    print "Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply)
                                     logging.debug("Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply))
 
                                 try:
@@ -671,7 +674,6 @@ class paradox:
                                         logging.error("Exception checking/updating zone names: {}".format(ezone.message))
 
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
-                                print "test message events"
                                 if ord(message[7]) == 0:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "OFF"))
                                     client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=1, retain=True)
@@ -1019,8 +1021,9 @@ class paradox:
             partition1status2 = partition1status2 / 2
             itemNo = y + 1
             zoneState = "ON" if bit else "OFF"
-            print "Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+            
             if Debug_Mode >= 2:
+                print "Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo))
         partition1status3 = ord(data[19])
         for y in range(8):
@@ -1028,8 +1031,9 @@ class paradox:
             partition1status3 = partition1status3 / 2
             itemNo = y + 1
             zoneState = "ON" if bit else "OFF"
-            print "Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+            
             if Debug_Mode >= 2:
+                print "Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo))
         partition1status4 = ord(data[20])
         for y in range(8):
@@ -1037,8 +1041,8 @@ class paradox:
             partition1status4 = partition1status4 / 2
             itemNo = y + 1
             zoneState = "ON" if bit else "OFF"
-            print "Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo)
             if Debug_Mode >= 2:
+                print "Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo))
                 print "partition 1 status: {} {} {} {}".format(partition1status1,partition1status2,partition1status3,partition1status4)
         
@@ -1067,7 +1071,9 @@ class paradox:
                   #"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd0\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
         message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         message = self.format37ByteMessage(message)
-        print "***** SEQUENCE {}".format(self.aliveSeq)
+        
+        if Debug_Mode >= 2:
+            print "***** SEQUENCE {}".format(self.aliveSeq)
         self.sendData(header + message)
         
         self.aliveSeq += 1
@@ -1384,7 +1390,9 @@ if __name__ == '__main__':
 
                 time.sleep(1)
                 
-                logging.info("Calling keepalive " + str(keepalivecount))
+                if Debug_Mode >= 2:
+                    logging.info("Calling keepalive " + str(keepalivecount))
+                    
                 myAlarm.keepAlive(Debug_Mode)
                 keepalivecount = keepalivecount + 1
                 #myAlarm.keepAlivePAI(Debug_Mode)
