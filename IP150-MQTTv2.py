@@ -681,17 +681,17 @@ class paradox:
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "ON"))
                                     client.publish(Topic_Publish_ZoneState + "/" + location,"ON", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 11 or ord(message[8]) == 3):   #Disarm
-                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "disarm"))
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "DISARMED"))
                                     client.publish(Topic_Publish_ArmState ,"OFF", qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"DISARMED", qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 4 ):   #SLEEP
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
-                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "SLEEP"))
                                     client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"SLEEP", qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 3 ):   #STAY
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
-                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "STAY"))
                                     client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"STAY", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 12):   #arm
@@ -699,6 +699,9 @@ class paradox:
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
                                     client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"ARMED", qos=1, retain=True)
+                                elif ord(message[7]) == 2 and (ord(message[8]) == 9):   #Arming state on Swawk off
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "ARMING"))
+                                    client.publish(Topic_Publish_ArmState + "/Status" ,"ARMING", qos=1, retain=True)
                                 elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
                                     print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
                                     if message[8]:
