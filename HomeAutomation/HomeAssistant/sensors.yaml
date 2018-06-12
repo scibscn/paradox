@@ -1,0 +1,36 @@
+
+############################################################
+#Alarm Sensors
+############################################################
+- platform: mqtt
+  state_topic: "Paradox/Partition"
+  name: 'Arm State'
+
+#Zone Labels
+- platform: mqtt
+  state_topic: "Paradox/Zone/<zone name>"
+  name: 'Garage PIR'
+
+  #example zone label
+- platform: mqtt
+  state_topic: "Paradox/Zone/Family room PIR"
+  name: 'Family Room PIR'
+
+#Battery Status from, more for interests sake
+- platform: mqtt
+  state_topic: "Paradox/Status/1"
+  name: 'Alarm Battery'
+  value_template: '{{value_json.battery}}'
+
+- platform: mqtt
+  state_topic: "Paradox/Status/1"
+  name: 'Alarm VDC'
+  value_template: '{{value_json.vdc}}'
+
+- platform: mqtt
+  state_topic: "Paradox/Status/1"
+  name: 'Alarm DC'
+  value_template: '{{value_json.dc}}'
+
+############################################################
+

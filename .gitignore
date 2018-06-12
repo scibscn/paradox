@@ -219,3 +219,4 @@ config.ini
 lib/client.pyc
 lib/client.pyc
 lib/client.pyc
+*.pyc
