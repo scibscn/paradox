@@ -72,13 +72,13 @@ Once the script has settled to listen for events, the following topics are avail
     * etc.....
 
   * Topic <b>Paradox/Zones/<i>zone label</i></b>
-  Sets a status for on of off for each zone.  Allows Openhab?Home Assistant to easily configure an item for each zone
+  Sets a status for on of off for each zone.  Allows Openhab?Home Assistant to easily configure an item for each zone.  Use config item Publish_Zones_OpenClosed to choose between ON/OFF and OPEN/CLOSED for the zone payload message.
 
   * Topic <b>Paradox/Partition</b>
   Shows the current partition status (<i>ON</i>/<i>OFF</i>).  Can't be determines on startup though (unless you've updated the Pincode), only while running.     If a valid pincode is entered in the configuration file, the parition status will be updated every 6 seconds.
   
   * Topic <b>Paradox/Partition/Status</b>
-  Shows <i>ARMED</i>, <i>DISARMED</i>, <i>SLEEP</i> and <i>STAY</i> for the arming type of the partition (only partition 1 at this stage), and I may need to move this to a Paradox/P1 /P2 type structure.
+  Shows <i>ARMED</i>, <i>DISARMED</i>, <i>SLEEP</i> and <i>STAY</i>, <i>ARMING</i> for the arming type of the partition (only partition 1 at this stage), and I may need to move this to a Paradox/P1 /P2 type structure.
 
   * Topic <b>Paradox/Status/1</b>
   A Json object with the voltages of the panel for example:

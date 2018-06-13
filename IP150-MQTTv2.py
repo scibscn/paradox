@@ -13,7 +13,7 @@ import logging.handlers
 import os.path
 import json
 
-# Version 2.0.5
+# Version 2.0.6
 
 # Alarm controls can be given in payload, e.g. Paradox/C/P1, payl = Disarm
 ################################################################################################
@@ -21,6 +21,11 @@ import json
 ################################################################################################
 # Change History
 ################################################################################################
+# 2018-06-13 2.0.6
+# - Added and arming and disarming state on live events, and on partition status (1) message
+# - Added a new config item Publish_Zones_OpenClosed.  Set to 1 to have the service report OPEN for on/triggered
+#   and CLOSED for off/non triggered zones and partitions.
+#
 # 2018-06-08 2.0.5
 # - Reduced keep alive logging
 #
@@ -92,6 +97,9 @@ Topic_Publish_ArmState = "Paradox/Partition"
 Topic_Publish_Heartbeat = "Paradox/Heatbeat"
 Publish_Status_Factor = 1
 Topic_Publish_Status = "Paradox/Status"
+Publish_Zones_OpenClosed = 0
+ZonesOn = "ON"
+ZonesOff = "OFF"
 Publish_Static_Topic = 0
 Alarm_Model = "ParadoxMG5050"
 Alarm_Registry_Map = "ParadoxMG5050"
@@ -503,10 +511,10 @@ class paradox:
             if itemNo in self.zoneNames.keys():
               location = self.zoneNames[itemNo]
               if len(location) > 0:
-                zoneState = "ON" if bit else "OFF"
+                zoneState = ZonesOn if bit else ZonesOff
                 print "Publishing initial zone state (state:" + zoneState + ", zone:" + location + ")"
                 #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
-                client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
+                client.publish(Topic_Publish_ZoneState + "/" + location, zoneState, qos=1, retain=True)
         time.sleep(0.3)
         message =  "\x50\x00\x80\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd1\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
@@ -519,7 +527,7 @@ class paradox:
         # Skip to alarm status
         reply = reply[33:]
         alarmState = ord(reply[0])
-        alarmState = "ON" if (alarmState & 1) else "OFF"
+        alarmState = ZonesOn if (alarmState & 1) else ZonesOff
         print "Publishing initial alarm state (state:" + alarmState + ")"
         if Debug_Mode >= 2:
             logging.debug("updateZoneAndAlarmStatus: Publishing initial alarm state (state:" + alarmState + ")")
@@ -675,32 +683,32 @@ class paradox:
 
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
                                 if ord(message[7]) == 0:
-                                    logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "OFF"))
-                                    client.publish(Topic_Publish_ZoneState + "/" + location,"OFF", qos=1, retain=True)
+                                    logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, ZonesOff))
+                                    client.publish(Topic_Publish_ZoneState + "/" + location,ZonesOff, qos=1, retain=True)
                                 elif ord(message[7]) == 1:
-                                    logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, "ON"))
-                                    client.publish(Topic_Publish_ZoneState + "/" + location,"ON", qos=1, retain=True)
+                                    logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, ZonesOn))
+                                    client.publish(Topic_Publish_ZoneState + "/" + location,ZonesOn, qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 11 or ord(message[8]) == 3):   #Disarm
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "DISARMED"))
-                                    client.publish(Topic_Publish_ArmState ,"OFF", qos=1, retain=True)
+                                    client.publish(Topic_Publish_ArmState ,ZonesOff, qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"DISARMED", qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 4 ):   #SLEEP
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
-                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "SLEEP"))
-                                    client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "SLEEP"))
+                                    client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"SLEEP", qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 3 ):   #STAY
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
-                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "STAY"))
-                                    client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "STAY"))
+                                    client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"STAY", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 12):   #arm
                                     #12 is sleep arm, 14 is full arm - is STAY 13?
-                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "arm"))
-                                    client.publish(Topic_Publish_ArmState ,"ON", qos=1, retain=True)
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "ARMED"))
+                                    client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"ARMED", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 9):   #Arming state on Swawk off
-                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ZoneState, "ARMING"))
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "ARMING"))
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"ARMING", qos=1, retain=True)
                                 elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
                                     print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
@@ -975,14 +983,14 @@ class paradox:
                 bit = b & 1
                 b = b / 2
                 itemNo = x * 8 + y + 1
-                zoneState = "ON" if bit else "OFF"
+                zoneState = ZonesOn if bit else ZonesOff
                 if itemNo in self.zoneNames.keys():
                     location = self.zoneNames[itemNo]
                     if len(location) > 0:
                         if Debug_Mode >= 1:
                             logging.debug("Publishing initial zone state (state: {}, zone number: {} Zone {})".format( zoneState,itemNo,location))
                         if keepalivecount % Publish_Status_Factor == 0:
-                            client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
+                            client.publish(Topic_Publish_ZoneState + "/" + location, ZonesOn if bit else ZonesOff, qos=1, retain=True)
 
     def keepAliveStatus1(self, data, Debug_Mode):
         #Panel Status 1 - Partition Status 
@@ -993,7 +1001,7 @@ class paradox:
             bit = partition1status1 & 1
             partition1status1 = partition1status1 / 2
             itemNo = y + 1
-            zoneState = "ON" if bit else "OFF"
+            zoneState = ZonesOn if bit else ZonesOff
             if Debug_Mode >= 1:
                 print "Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo))
@@ -1001,20 +1009,15 @@ class paradox:
                 #alarm disarmed
                 if Debug_Mode >= 1:
                     logging.debug("Publishing Partition Arm state (state: {}, bit: {})".format( zoneState, itemNo))
-                if keepalivecount % Publish_Status_Factor == 0:
-                    client.publish(Topic_Publish_ArmState,zoneState,qos=1,retain=True)
-                if zoneState == "ON":
+                if zoneState == ZonesOn:
                     armstate = "ARMED"
             elif itemNo == 2: # sleep
-                if zoneState == "ON":
+                if zoneState == ZonesOn:
                     armstate = "SLEEP"
             elif itemNo == 3: #away
-                if zoneState == "ON":
+                if zoneState == ZonesOn:
                     armstate = "STAY"
-        if Debug_Mode >= 2:
-            logging.debug("Publishing Partition Arm state (state: {})".format( armstate))
-        if keepalivecount % Publish_Status_Factor == 0:
-            client.publish(Topic_Publish_ArmState + "/Status",armstate,qos=1,retain=True)
+        
             #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
             #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
         
@@ -1023,17 +1026,26 @@ class paradox:
             bit = partition1status2 & 1
             partition1status2 = partition1status2 / 2
             itemNo = y + 1
-            zoneState = "ON" if bit else "OFF"
+            zoneState = ZonesOn if bit else ZonesOff
             
             if Debug_Mode >= 2:
                 print "Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo))
+            if itemNo == 1:
+                if zoneState == ZonesOn:
+                    armstate = "ARMING"
+
+        if Debug_Mode >= 2:
+            logging.debug("Publishing Partition Arm state (state: {})".format( armstate))
+        if keepalivecount % Publish_Status_Factor == 0:
+            client.publish(Topic_Publish_ArmState + "/Status",armstate,qos=1,retain=True)
+
         partition1status3 = ord(data[19])
         for y in range(8):
             bit = partition1status3 & 1
             partition1status3 = partition1status3 / 2
             itemNo = y + 1
-            zoneState = "ON" if bit else "OFF"
+            zoneState = ZonesOn if bit else ZonesOff
             
             if Debug_Mode >= 2:
                 print "Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo)
@@ -1043,7 +1055,7 @@ class paradox:
             bit = partition1status4 & 1
             partition1status4 = partition1status4 / 2
             itemNo = y + 1
-            zoneState = "ON" if bit else "OFF"
+            zoneState = ZonesOn if bit else ZonesOff
             if Debug_Mode >= 2:
                 print "Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo))
@@ -1193,6 +1205,13 @@ if __name__ == '__main__':
                 Publish_Status_Factor = int(Config.get("MQTT Topics","Publish_Status_Factor"))
                 Topic_Publish_Status  = Config.get("MQTT Topics", "Topic_Publish_Status")
                 Publish_Static_Topic = Config.get("MQTT Topics", "Publish_Static_Topic")
+                try:
+                    Publish_Zones_OpenClosed = int(Config.get("MQTT Topics", "Publish_Zones_OpenClosed"))
+                except:
+                    Publish_Zones_OpenClosed = 0
+                if Publish_Zones_OpenClosed == 1:
+                    ZonesOff = "CLOSED"
+                    ZonesOn = "OPEN"
 
                 Debug_Mode = int(Config.get("Application", "Debug_Mode"))
                 Auto_Logoff = Config.get("Application", "Auto_Logoff")
