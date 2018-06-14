@@ -21,6 +21,11 @@ import json
 ################################################################################################
 # Change History
 ################################################################################################
+# 2018-06-14 2.0.7
+# - Started adding processing of a triggered event (message 36).  
+#   Currently setting Paradox/Partition/Status to Triggered
+#   Currently setting Paradox/Partition/Alarm to IN Alarm: Zone <zonename>
+#
 # 2018-06-13 2.0.6
 # - Added and arming and disarming state on live events, and on partition status (1) message
 # - Added a new config item Publish_Zones_OpenClosed.  Set to 1 to have the service report OPEN for on/triggered
@@ -683,39 +688,56 @@ class paradox:
 
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
                                 if ord(message[7]) == 0:
+                                    #Zone state off
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, ZonesOff))
                                     client.publish(Topic_Publish_ZoneState + "/" + location,ZonesOff, qos=1, retain=True)
                                 elif ord(message[7]) == 1:
+                                    #zone state on
                                     logging.info("Publishing event \"%s\" for %s =  %s" % (Topic_Publish_ZoneState, location, ZonesOn))
                                     client.publish(Topic_Publish_ZoneState + "/" + location,ZonesOn, qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 11 or ord(message[8]) == 3):   #Disarm
+                                    #partition disarmed event
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "DISARMED"))
                                     client.publish(Topic_Publish_ArmState ,ZonesOff, qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"DISARMED", qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 4 ):   #SLEEP
+                                    #partition sleep armed event
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "SLEEP"))
                                     client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"SLEEP", qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 3 ):   #STAY
+                                    #partition stayd armed event
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "STAY"))
                                     client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"STAY", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 12):   #arm
+                                    #partition full armed event
                                     #12 is sleep arm, 14 is full arm - is STAY 13?
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "ARMED"))
                                     client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"ARMED", qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 9):   #Arming state on Swawk off
+                                    #sqwak off messages - part of the arming sequence.
                                     logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "ARMING"))
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"ARMING", qos=1, retain=True)
                                 elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
+                                    #remote button pressed
                                     print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
                                     if message[8]:
                                        print "Message 8: %s" % str(ord(message[8]))
                                        logging.info("Publishing event \"%s Button%s\" =  %s" % (Topic_Publish_Events,str(ord(message[8])), "ON"))
                                        client.publish(Topic_Publish_Events + "/PGM" + str(ord(message[8])) ,"ON", qos=1, retain=True)
+                                elif ord(message[7]) == 36 or ord(message[7]) == 37:
+                                    #zone triggered = 36
+                                    #Smoke alarm = 37
+                                    #2018-06-14 07:55:49,749 DEBUG Events 7-36 8-11- Reply: Event:Zone in alarm;SubEvent:Mid toilet Reed
+                                    #2018-06-14 07:55:49,752 DEBUG Message 7: 36 Message 8: 11
+                                    logging.info("Publishing event \"%s\" =  %s" % (Topic_Publish_ArmState, "TRIGGERED"))
+                                    client.publish(Topic_Publish_ArmState + "/Status" ,"TRIGGERED", qos=1, retain=True)
+                                    client.publish(Topic_Publish_ArmState + "/Alarm" ,"IN ALARM, Zone: " + location, qos=1, retain=False)
+
   
 
                             if Events_Payload_Numeric == 1:
