@@ -67,7 +67,7 @@ import json
 # - Added time.sleep(5) on each failure
 #
 # 2017-02-26
-# - Changed print statementst to logging statement to generate a proper log file
+# - Changed #print statementst to logging statement to generate a proper log file
 # - Added new config key words Topic_Publish_ZoneState and Topic_Publish_Partition
 # - Topic_Publish_ZoneState - that is called from TestEventMessages when a zone event is found, 
 #   froamt Paradox/Zone/<zone name> - where zone name is extracted from the event packet (chars 15 - 30)
@@ -241,15 +241,15 @@ def on_message(client, userdata, msg):
 
 def connect_ip150socket(address, port):
     try:
-        print "trying to connect %s" % address
+        #print "trying to connect %s" % address
         logging.info("Connecting to %s" % address)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(2)
         s.connect((address, port))
-        print "connected"
+        #print "connected"
     except Exception, e:
         logging.error( "Error connecting to IP module (exiting): " + repr(e))
-        print "error connecting"
+        #print "error connecting"
         client.publish(Topic_Publish_AppState,
                        "Error connecting to IP module (exiting): " + repr(e),
                        1, True)
@@ -399,11 +399,11 @@ class paradox:
         #get the first half of the message with the prodct type and panel id into the new 00 request
         message = reply[16:26]
 
-        print "***********************************Product Type: {}".format(hex(ord(message[4])))
-        print "***********************************Firmware: {}.{}.{}".format(hex(ord(message[5])),hex(ord(message[6])),hex(ord(message[7])))
-        print "********************************Panel ID: {} {}".format(hex(ord(message[8])),hex(ord(message[9])))
-        print "COMMS MESSAGE  : " + " ".join(hex(ord(i)) for i in message)
-        print "********************************P"
+        #print "***********************************Product Type: {}".format(hex(ord(message[4])))
+        #print "***********************************Firmware: {}.{}.{}".format(hex(ord(message[5])),hex(ord(message[6])),hex(ord(message[7])))
+        #print "********************************Panel ID: {} {}".format(hex(ord(message[8])),hex(ord(message[9])))
+        #print "COMMS MESSAGE  : " + " ".join(hex(ord(i)) for i in message)
+        #print "********************************P"
         
         #need to work out how to get pcpassword (PIN) form Config which) to hex string.
         #eg PIN of 1234 should be added as b'\x12' b'\x34' not converted.
@@ -417,7 +417,7 @@ class paradox:
         logging.info( "Command 0x00 : Initialize communication")
         reply = self.readDataRaw(header2 + message, Debug_Mode)
 
-        print "Command 0x50 : PC Status 0"
+        #print "Command 0x50 : PC Status 0"
         header[1] = '\x25'
         header[3] = '\x04'
         header[5] = '\x00'
@@ -446,11 +446,11 @@ class paradox:
             for val in message:  # Calculate checksum
                 checksum += ord(val)
 
-            #print "CS: " + str(checksum)
+            ##print "CS: " + str(checksum)
             while checksum > 255:
                 checksum = checksum - (checksum / 256) * 256
 
-            #print "CS: " + str(checksum)
+            ##print "CS: " + str(checksum)
 
             message += bytes(bytearray([checksum]))  # Add check to end of message
 
@@ -459,7 +459,7 @@ class paradox:
             if (msgLen % 16) != 0:
                 message = message.ljust((msgLen / 16 + 1) * 16, '\xee')
 
-        #print " ".join(hex(ord(i)) for i in message)
+        ##print " ".join(hex(ord(i)) for i in message)
 
         return message
 
@@ -479,26 +479,26 @@ class paradox:
         #message += "\xd0\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
         reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
         if len(reply) < 39:
-          print "Response without zone status: {}".format(len(reply))
+          #print "Response without zone status: {}".format(len(reply))
           return
-        print "***************************************************** printing values"
+        #print "***************************************************** printing values"
         data = reply[16:]
-        print "heart beat status 0 reply: <--" + " ".join(hex(ord(i)) for i in data)
-        print "Value 16 ({}) and 17 ({}) ".format(ord(data[0]), ord(data[1]))
+        #print "heart beat status 0 reply: <--" + " ".join(hex(ord(i)) for i in data)
+        #print "Value 16 ({}) and 17 ({}) ".format(ord(data[0]), ord(data[1]))
         if data[1] == '\x00' and (data[0] == '\x50' or data[0] == '\x52'):
-            print "Year :  {}{}".format(ord(data[9]),ord(data[10]))
-            print "Month : {}".format( ord(data[11]))
-            print "Day :   {}".format(ord(data[12]))
-            print "Hour:   {}".format( ord(data[13]))
-            print "minute: {}".format( ord(data[14]))
-            print "ac:  {}".format( ord(data[15]))
-            print "DC:  {}".format( ord(data[16]))
-            print "BDC: {}".format(ord(data[17]))
+            #print "Year :  {}{}".format(ord(data[9]),ord(data[10]))
+            #print "Month : {}".format( ord(data[11]))
+            #print "Day :   {}".format(ord(data[12]))
+            #print "Hour:   {}".format( ord(data[13]))
+            #print "minute: {}".format( ord(data[14]))
+            #print "ac:  {}".format( ord(data[15]))
+            #print "DC:  {}".format( ord(data[16]))
+            #print "BDC: {}".format(ord(data[17]))
             # Skip to zone status
             reply = reply[25:]
             reply = reply[1:]
         else:
-            print "No 00 record found"
+            #print "No 00 record found"
             # Skip to zone status
             reply = reply[25:]
             #reply = reply[10:] # skip date, time and voltages
@@ -517,23 +517,23 @@ class paradox:
               location = self.zoneNames[itemNo]
               if len(location) > 0:
                 zoneState = ZonesOn if bit else ZonesOff
-                print "Publishing initial zone state (state:" + zoneState + ", zone:" + location + ")"
+                #print "Publishing initial zone state (state:" + zoneState + ", zone:" + location + ")"
                 #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
                 client.publish(Topic_Publish_ZoneState + "/" + location, zoneState, qos=1, retain=True)
         time.sleep(0.3)
         message =  "\x50\x00\x80\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd1\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee\xee"
-        print "heart beat status 1 request: -->" + " ".join(hex(ord(i)) for i in message)
+        #print "heart beat status 1 request: -->" + " ".join(hex(ord(i)) for i in message)
         reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
-        print "heart beat reply status 1 : <--" + " ".join(hex(ord(i)) for i in reply)
+        #print "heart beat reply status 1 : <--" + " ".join(hex(ord(i)) for i in reply)
         if len(reply) < 34:
-          print "Response without zone status"
+          #print "Response without zone status"
           return
         # Skip to alarm status
         reply = reply[33:]
         alarmState = ord(reply[0])
         alarmState = ZonesOn if (alarmState & 1) else ZonesOff
-        print "Publishing initial alarm state (state:" + alarmState + ")"
+        #print "Publishing initial alarm state (state:" + alarmState + ")"
         if Debug_Mode >= 2:
             logging.debug("updateZoneAndAlarmStatus: Publishing initial alarm state (state:" + alarmState + ")")
 
@@ -569,22 +569,22 @@ class paradox:
                         skip_next = 0
                         continue
 
-                    # print "Update generic registers step: " + str(x)
+                    # #print "Update generic registers step: " + str(x)
 
                     message = register_dict[x]["Send"]
                     try:
                         next_message = register_dict[x + 1]["Send"]
                     except KeyError:
                         skip_next = 1
-                        # print "no next key"
+                        # #print "no next key"
 
-                    # print "Current msg " + " ".join(hex(ord(i)) for i in message)
-                    # print "Next msg    " + " ".join(hex(ord(i)) for i in next_message)
+                    # #print "Current msg " + " ".join(hex(ord(i)) for i in message)
+                    # #print "Next msg    " + " ".join(hex(ord(i)) for i in next_message)
 
                     assert isinstance(message, basestring), "Message to be sent is not a string: %r" % message
                     message = message.ljust(36, '\x00')
 
-                    # print " ".join(hex(ord(i)) for i in message)
+                    # #print " ".join(hex(ord(i)) for i in message)
 
                     reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
 
@@ -594,7 +594,7 @@ class paradox:
                     mapping_dict(x, reply[start:finish].rstrip().translate(None, '\x00'))
 
                     if (skip_next == 0) and (message[0:len(next_message)] == next_message):
-                        # print "Same"
+                        # #print "Same"
                         start = register_dict[x + 1]["Receive"]["Start"]
                         finish = register_dict[x + 1]["Receive"]["Finish"]
                         mapping_dict(x + 1, reply[start:finish].rstrip().translate(None, '\x00'))
@@ -621,7 +621,7 @@ class paradox:
                     if topic[0].upper() + topic[1:] + "s" == "Zones":
                        self.zoneNames = completed_dict
 
-                print self.zoneNames
+                #print self.zoneNames
 
 
             except Exception, e:
@@ -639,7 +639,7 @@ class paradox:
 
         reply = '.'
 
-        if Debug_Mode >= 1 and reply_amount > 1:
+        if Debug_Mode > 1 and reply_amount > 1:
             logging.debug("Multiple data: " + repr(messages))
 
         if reply_amount > 0:
@@ -664,12 +664,12 @@ class paradox:
                                 location = message[15:30].strip().translate(None, '\x00')
                                 if location and Debug_Mode >= 1:
                                     logging.debug("Event location: \"%s\"" % location)
-                                    print "Event location: \"%s\"" % location
+                                    #print "Event location: \"%s\"" % location
 
                                 reply = "Event:" + event + ";SubEvent:" + subevent
 
                                 if Debug_Mode >= 2:
-                                    print "Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply)
+                                    #print "Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply)
                                     logging.debug("Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply))
 
                                 try:
@@ -682,7 +682,7 @@ class paradox:
                                             self.zoneNames[ord(message[8])]= location
                                         else:
                                             logging.debug("Updating zone name to match location in live event")
-                                            print "zones {0} matches location {1} ".format(zonename,location)
+                                            #print "zones {0} matches location {1} ".format(zonename,location)
                                 except Exception as ezone:
                                         logging.error("Exception checking/updating zone names: {}".format(ezone.message))
 
@@ -724,9 +724,9 @@ class paradox:
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"ARMING", qos=1, retain=True)
                                 elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
                                     #remote button pressed
-                                    print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
+                                    #print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
                                     if message[8]:
-                                       print "Message 8: %s" % str(ord(message[8]))
+                                       #print "Message 8: %s" % str(ord(message[8]))
                                        logging.info("Publishing event \"%s Button%s\" =  %s" % (Topic_Publish_Events,str(ord(message[8])), "ON"))
                                        client.publish(Topic_Publish_Events + "/PGM" + str(ord(message[8])) ,"ON", qos=1, retain=True)
                                 elif ord(message[7]) == 36 or ord(message[7]) == 37:
@@ -753,7 +753,7 @@ class paradox:
 
                             client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
 
-                            if Debug_Mode >= 1:
+                            if Debug_Mode > 1:
                                 logging.debug(reply)
 
                         except ValueError:
@@ -786,9 +786,9 @@ class paradox:
 
             for i, val in enumerate(requests):
                 requests[i] = '\xaa' + val
-                # print "Request seq " + str(i) + ": " + " ".join(hex(ord(i)) for i in requests[i])
+                # #print "Request seq " + str(i) + ": " + " ".join(hex(ord(i)) for i in requests[i])
 
-            # print "Request(s): ", requests
+            # #print "Request(s): ", requests
 
             replyAmount = len(requests)
             x = replyAmount
@@ -796,14 +796,14 @@ class paradox:
             headers = [] * replyAmount
             messages = [] * replyAmount
 
-            # print "Reply amount: ", x
+            # #print "Reply amount: ", x
 
             x -= 1
 
-            # print "Going into while with first element: " + requests[0]
+            # #print "Going into while with first element: " + requests[0]
 
             while x >= 0:
-                # print "Working on number " + str(x) + ": " + " ".join(hex(ord(i)) for i in requests[i])
+                # #print "Working on number " + str(x) + ": " + " ".join(hex(ord(i)) for i in requests[i])
                 if len(requests[x]) > 16:
                     headers.append(requests[x][:16])
                     messages.append(requests[x][16:])
@@ -854,7 +854,7 @@ class paradox:
                     sys.exc_clear()
                     return ''
                     # sleep(1)
-                    # print 'Receive timed out, ret'
+                    # #print 'Receive timed out, ret'
                     # continue
                 else:
                     logging.error("Error reading data from IP module, retrying again... (" + str(tries) + "): " + repr(e))
@@ -910,7 +910,7 @@ class paradox:
         assert isinstance(message, basestring), "Message to be sent is not a string: %r" % message
         message = message.ljust(36, '\x00')
 
-        # print " ".join(hex(ord(i)) for i in message)
+        # #print " ".join(hex(ord(i)) for i in message)
 
         reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
 
@@ -918,7 +918,7 @@ class paradox:
 
     def controlPGM(self, pgm, state="OFF", Debug_Mode=0):
 
-        # print state.upper()
+        # #print state.upper()
 
         assert (isinstance(pgm, int) and pgm >= 0 and pgm <= 16), "Problem with PGM number: %r" % str(pgm)
         assert (isinstance(pgm, int) and pgm >= 0 and pgm <= 16), "Problem with PGM number: %r" % str(pgm)
@@ -941,7 +941,7 @@ class paradox:
         assert isinstance(message, basestring), "Message to be sent is not a string: %r" % message
         message = message.ljust(36, '\x00')
 
-        # print " ".join(hex(ord(i)) for i in message)
+        # #print " ".join(hex(ord(i)) for i in message)
 
         reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
 
@@ -976,16 +976,16 @@ class paradox:
                         ord(data[12]),
                         ord(data[13]),
                         ord(data[14]))
-        print "dateTime: {}".format(paneldatetime)
+        #print "dateTime: {}".format(paneldatetime)
         vdc = round(ord(data[15])*(20.3-1.4)/255.0+1.4,1)
         #vdc = ord(data[15])
-        if Debug_Mode >= 1:
+        if Debug_Mode > 1:
             logging.debug("VDC: {}".format(vdc) )
         dc = round(ord(data[16])*22.8/255.0,1)
-        if Debug_Mode >= 1:
+        if Debug_Mode > 1:
             logging.debug("DC: {}".format(dc))
         battery = round(ord(data[17])*22.8/255.0,1)
-        if Debug_Mode >= 1:
+        if Debug_Mode > 1:
             logging.debug("battery: {}".format(battery))
 
         jsondata = json.dumps({"paneldate":paneldatetime,"vdc":vdc,"dc":dc,"battery":battery})
@@ -1009,7 +1009,7 @@ class paradox:
                 if itemNo in self.zoneNames.keys():
                     location = self.zoneNames[itemNo]
                     if len(location) > 0:
-                        if Debug_Mode >= 1:
+                        if Debug_Mode > 1:
                             logging.debug("Publishing initial zone state (state: {}, zone number: {} Zone {})".format( zoneState,itemNo,location))
                         if keepalivecount % Publish_Status_Factor == 0:
                             client.publish(Topic_Publish_ZoneState + "/" + location, ZonesOn if bit else ZonesOff, qos=1, retain=True)
@@ -1024,12 +1024,12 @@ class paradox:
             partition1status1 = partition1status1 / 2
             itemNo = y + 1
             zoneState = ZonesOn if bit else ZonesOff
-            if Debug_Mode >= 1:
-                print "Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+            if Debug_Mode > 1:
+                #print "Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 1 bits state (state: {}, bit: {})".format( zoneState, itemNo))
             if itemNo == 1:
                 #alarm disarmed
-                if Debug_Mode >= 1:
+                if Debug_Mode > 1:
                     logging.debug("Publishing Partition Arm state (state: {}, bit: {})".format( zoneState, itemNo))
                 if zoneState == ZonesOn:
                     armstate = "ARMED"
@@ -1051,7 +1051,7 @@ class paradox:
             zoneState = ZonesOn if bit else ZonesOff
             
             if Debug_Mode >= 2:
-                print "Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+                #print "Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 2 bits state (state: {}, bit: {})".format( zoneState, itemNo))
             if itemNo == 1:
                 if zoneState == ZonesOn:
@@ -1070,7 +1070,7 @@ class paradox:
             zoneState = ZonesOn if bit else ZonesOff
             
             if Debug_Mode >= 2:
-                print "Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+                #print "Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo))
         partition1status4 = ord(data[20])
         for y in range(8):
@@ -1079,9 +1079,9 @@ class paradox:
             itemNo = y + 1
             zoneState = ZonesOn if bit else ZonesOff
             if Debug_Mode >= 2:
-                print "Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo)
+                #print "Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo))
-                print "partition 1 status: {} {} {} {}".format(partition1status1,partition1status2,partition1status3,partition1status4)
+                #print "partition 1 status: {} {} {} {}".format(partition1status1,partition1status2,partition1status3,partition1status4)
         
         partition2status1 = ord(data[21])
         partition2status2 = ord(data[22])
@@ -1089,7 +1089,8 @@ class paradox:
         partition2status4 = ord(data[24])
         
         if Debug_Mode >= 2:
-            print "partition 2 status: {} {} {} {}".format(partition2status1,partition2status2,partition2status3,partition2status4)
+            logging.debug("partition 2 status: {} {} {} {}".format(partition2status1,partition2status2,partition2status3,partition2status4))
+            #print "partition 2 status: {} {} {} {}".format(partition2status1,partition2status2,partition2status3,partition2status4)
 
         #jsondata = json.dumps({"paneldate":paneldatetime,"vdc":vdc,"dc":dc,"battery":battery})
         #logging.info("Publishing panel status json: '{}'".format(jsondata))
@@ -1109,8 +1110,10 @@ class paradox:
         message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         message = self.format37ByteMessage(message)
         
-        if Debug_Mode >= 2:
-            print "***** SEQUENCE {}".format(self.aliveSeq)
+        #if Debug_Mode >= 2:
+        #print "***** SEQUENCE {}".format(self.aliveSeq)
+
+
         self.sendData(header + message)
         
         self.aliveSeq += 1
@@ -1133,15 +1136,15 @@ class paradox:
             zone[1] = swop
 
             temp = "".join(zone)
-            # print " ".join(hex(ord(i)) for i in temp)
+            # #print " ".join(hex(ord(i)) for i in temp)
             message += temp
 
             message += "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            # print " ".join(hex(ord(i)) for i in message)
+            # #print " ".join(hex(ord(i)) for i in message)
             reply = self.readDataRaw(header + self.format37ByteMessage(message))
 
             logging.info(reply)
-            # print " ".join(hex(ord(i)) for i in reply)
+            # #print " ".join(hex(ord(i)) for i in reply)
 
             time.sleep(0.3)
 
@@ -1152,7 +1155,7 @@ if __name__ == '__main__':
 
     State_Machine = 0
     attempts = 3
-    print "logging to file %s" % LOG_FILE
+    #print "logging to file %s" % LOG_FILE
     speciallogging = False
     interruptCountdown = 0
     interrupt = 0
@@ -1161,34 +1164,40 @@ if __name__ == '__main__':
     while True:
 
         if speciallogging:
-            print "Special logging after errorsstate %d" % State_Machine
+            #print "Special logging after errorsstate %d" % State_Machine
             logging.info("Special logging after errors state %d" % State_Machine)
 
         # -------------- Read Config file ----------------
         if State_Machine <= 0:
             print "reading  config"
-            logging.info("Reading config.ini file...")
-            logger.info("Reading config.ini file...")
+            #logging.info("Reading config.ini file...")
+            #logger.info("Reading config.ini file...")
 
             try:
 
                 Config = ConfigParser.ConfigParser()
                 Config.read("config.ini")
                 LOG_FILE = Config.get("Application","Log_File")
-                #log_handler = logging.handlers.WatchedFileHandler(LOG_FILE)
-                log_handler = logging.handlers.TimedRotatingFileHandler(LOG_FILE,when="D",interval=1,backupCount=5)
+                #log_handler = logging.handlers.TimedRotatingFileHandler(LOG_FILE,when="D",interval=1,backupCount=5)
+                if LOG_FILE.startswith('stream://'):
+                   LOG_FILE = LOG_FILE.replace('stream://', '')
+                   #log_handler.handlers.StreamHandler(stream=eval(LOG_FILE))
+                   log_handler = logging.StreamHandler(stream=eval(LOG_FILE))
+                else:
+                   log_handler = logging.handlers.TimedRotatingFileHandler(LOG_FILE,when="D",interval=1,backupCount=5, encoding=None)
+                print "finished setting log"
                 formatter = logging.Formatter(LOG_FORMAT)
                 log_handler.setLevel(logging.DEBUG)
                 log_handler.setFormatter(formatter)
                 logging.info("logging complete")
                 logging.debug("logging complete")
 
-                #logger = logging.getLogger()
-                log_handler2 = logging.StreamHandler()
-                log_handler2.setLevel(logging.DEBUG)
+                #log_handler2 writes to console (and syslog)
+                #log_handler2 = logging.StreamHandler()
+                #log_handler2.setLevel(logging.DEBUG)
                 logger.setLevel(logging.DEBUG)
-                log_handler2.setFormatter(formatter)
-                logger.addHandler(log_handler2)
+                #log_handler2.setFormatter(formatter)
+                #logger.addHandler(log_handler2)
                 logger.addHandler(log_handler)
                 logger.info("logging complete")
                 if os.path.isfile(LOG_FILE) :
@@ -1245,7 +1254,7 @@ if __name__ == '__main__':
                    logging.info("logging set to debug") 
 
                 logging.info("config.ini file read successfully: %d" % Debug_Mode)
-                print "config read"
+                #print "config read"
                 State_Machine += 1
 
             except Exception, e:
@@ -1289,7 +1298,7 @@ if __name__ == '__main__':
 
             except Exception, e:
 
-                logging.error( "MQTT connection error (" + str(attempts) + ": " + e)
+                logging.error( "MQTT connection error (" + str(attempts) + ": " + str(e))
                 time.sleep(Poll_Speed * 5)
                 attempts -= 1
 
@@ -1433,7 +1442,8 @@ if __name__ == '__main__':
                     client.publish(Topic_Publish_AppState, "State Machine 4, Listening for events...", 1, True)
 
                 time.sleep(1)
-                
+                client.loop(.1)
+
                 if Debug_Mode >= 2:
                     logging.info("Calling keepalive " + str(keepalivecount))
 
@@ -1497,4 +1507,5 @@ if __name__ == '__main__':
                 time.sleep(1)
 
             State_Machine = 2
+
 
