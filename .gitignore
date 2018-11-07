@@ -220,3 +220,5 @@ lib/client.pyc
 lib/client.pyc
 lib/client.pyc
 *.pyc
+winscp.rnd
+build.config

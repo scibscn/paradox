@@ -736,7 +736,7 @@ class paradox:
                                     #2018-06-14 07:55:49,752 DEBUG Message 7: 36 Message 8: 11
                                     logging.info("Publishing Triggered event \"%s\" =  %s" % (Topic_Publish_ArmState, "TRIGGERED"))
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"TRIGGERED", qos=1, retain=True)
-                                    client.publish(Topic_Publish_ArmState + "/Alarm" ,"IN ALARM, Zone: " + location, qos=1, retain=False)
+                                    client.publish(Topic_Publish_ArmState + "/Alarm" ,"IN ALARM, Zone: " + location, qos=1, retain=True)
 
   
 
