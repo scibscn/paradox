@@ -13,7 +13,7 @@ import logging.handlers
 import os.path
 import json
 
-# Version 2.0.6
+# Version 2.0.8
 
 # Alarm controls can be given in payload, e.g. Paradox/C/P1, payl = Disarm
 ################################################################################################
@@ -21,6 +21,10 @@ import json
 ################################################################################################
 # Change History
 ################################################################################################
+# 2018-11-08 2.0.8
+# - Updated event logging to tell what even it was, as the message was the same.
+# - Set the Alarm topic to retained
+#
 # 2018-06-14 2.0.7
 # - Started adding processing of a triggered event (message 36).  
 #   Currently setting Paradox/Partition/Status to Triggered
