@@ -1274,7 +1274,7 @@ if __name__ == '__main__':
                     logging.info("State machine 1: starting client again")
 
                 logging.info("State01:Attempting connection to MQTT Broker: " + MQTT_IP + ":" + str(MQTT_Port))
-                client = mqtt.Client()
+                client = mqtt.Client("paradoxip")
 
                 if mqtt_password == '':
                     mqtt_password = None
