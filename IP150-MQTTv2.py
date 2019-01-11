@@ -13,7 +13,7 @@ import logging.handlers
 import os.path
 import json
 
-# Version 2.0.8
+# Version 2.0.9
 
 # Alarm controls can be given in payload, e.g. Paradox/C/P1, payl = Disarm
 ################################################################################################
