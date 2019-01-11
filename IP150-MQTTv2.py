@@ -21,6 +21,9 @@ import json
 ################################################################################################
 # Change History
 ################################################################################################
+# 2019-01-11 2.0.9
+# - Moved subscribe message to on_connect.  May look at splitting various topics to different functions.
+#
 # 2018-11-08 2.0.8
 # - Updated event logging to tell what even it was, as the message was the same.
 # - Set the Alarm topic to retained
@@ -153,6 +156,7 @@ def ConfigSectionMap(section):
 
 def on_connect(client, userdata, flags, rc):
     logging.info("Connected to MQTT broker with result code " + str(rc))
+    client.subscribe(Topic_Subscribe_Control + "#")
 
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
@@ -1292,7 +1296,7 @@ if __name__ == '__main__':
 
                 client.loop_start()
 
-                client.subscribe(Topic_Subscribe_Control + "#")
+                #client.subscribe(Topic_Subscribe_Control + "#")
 
                 logging.info("State01:MQTT client subscribed to control messages on topic: " + Topic_Subscribe_Control + "#")
 
