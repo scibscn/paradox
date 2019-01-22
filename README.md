@@ -135,3 +135,11 @@ If you want to run this as a daemon on Linux,
  2. Run: sudo systemctl daemon-reload
  3. Then you should be able to start the service with : sudo systemctl start paradoxip.service
 
+## Running in docker
+
+If you want to run this on docker (amd64)
+
+From the folder where your config.ini exists:
+```
+docker run -v $PWD:/opt/paradox/conf psyciknz/paradoxip
+```
