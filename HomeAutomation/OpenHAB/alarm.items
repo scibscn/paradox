@@ -1,7 +1,11 @@
 String alarm_state "Alarm Zone State [%s]" (g_alarm) {mqtt="<[openhab:Paradox/State:state:default]"}
 Switch alarm_state_arm_disarm "Alarm Arm State [%s]" <shield> (g_alarm) {mqtt="<[openhab:Paradox/Partition:state:default]"}
+
 //Any contact items need a transform as the scroipyt outputs ON or OFF, need to translate to OPEN CLOSED
-Contact alarm_connection_online "Monitor State [%s]" <shield> (g_alarm) {mqtt="<[openhab:ParadoxMonitor/$online:state:MAP(onoff.map)]"}
+//Connection state (LWT item for is the bridge online)
+Contact alarm_connection_online "Monitor State [%s]" <shield> (g_alarm) {mqtt="<[openhab:Paradox/$online:state:MAP(onoff.map)]"}
+
+//Panel Heartbeat
 Contact alarm_connection_heartbeat "Alarm Connection [%s]" <shield> (g_alarm) {mqtt="<[openhab:Paradox/Heartbeat:state:MAP(onoff.map)]"}
 
 //Zone Definitions, these labels are posted on each live event
@@ -10,7 +14,12 @@ Contact alarm_zone_familyrm "Family Room State [%s]" <motion> (g_alarm,g_motion_
 Contact alarm_zone_maindoor "Main Door State [%s]" <motion> (g_alarm,g_motion_detection) {mqtt="<[openhab:Paradox/Zone/Main door PIR:state:MAP(onoff.map)]"}
 
 //I'm using this state fro driving Homebridge https://github.com/mnrgreg/homebridge-paradox-security-system
+//It will post the state of the alarm, AWAY, SLEEP, DISARMED, TRIGGERED, OFF
 String alarm_hb_state "Alarm Homebridge state [%s]" (g_alarm) {mqtt="<[openhab:Paradox/Partition/Status:state:default]"}
+
+//This state should reflect any alarm state, and the location of the alarm.
+String alarm_alarm_status "Alarm [%s]" (g_alarm) {mqtt="<[openhab:Paradox/Partition/Alarm:state:default]"}
+
 
 //Battery status and voltages, happens ever 6 status cycles.  more for interests sake
 //Paradox/Status/1 {"battery": 13.4, "vdc": 16.9, "dc": 13.7, "paneldate": "2018-6-4 12:0"}
