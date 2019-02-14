@@ -10,7 +10,7 @@ User=openhab
 Group=openhab
 WorkingDirectory=/opt/paradoxip/
 PermissionsStartOnly=true
-ExecStart=/usr/bin/python /opt/paradoxip/IP150-MQTTv2.py
+ExecStart=/usr/bin/python /opt/paradoxip/IP150MQTTv2.py
 # Shutdown delay in seconds, before process is tried to be killed with KILL (if configured)
 TimeoutStopSec=20
 

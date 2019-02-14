@@ -21,6 +21,9 @@ import json
 ################################################################################################
 # Change History
 ################################################################################################
+# 2019-02-15 2.0.11
+# - Trying to add pytest.  Had to rename the name of the module to IP150MQTTv2.py  removing the dash.
+#
 # 2019-01-25 2.0.10
 # - When disarming, triggered is also posted.  Trying to stop this from happening, and so it's only posted
 #   when an actual alert.
@@ -641,9 +644,13 @@ class paradox:
 
         return
 
-    def testForEvents(self, Events_Payload_Numeric=0, Publish_Static_Topic=0, Debug_Mode=0):
+    def testForEvents(self, Events_Payload_Numeric=0, Publish_Static_Topic=0, Debug_Mode=0, data=None):
 
-        reply_amount, headers, messages = self.splitMessage(self.readDataRaw('', Debug_Mode))
+        if data is None:
+            reply_amount, headers, messages = self.splitMessage(self.readDataRaw('', Debug_Mode))
+        else:
+            messages = data
+            reply_amount = 1
         interrupt = 0  # Signal 3rd party connection interrupt
 
         #if Debug_Mode >= 1:
