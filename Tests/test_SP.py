@@ -2,10 +2,11 @@ import sys
 import pytest
 import IP150MQTTv2
 
+global client
 
 class dummy_mqtt(object):
     pass
-    def publish(self,topic,payload):
+    def publish(self,topic,payload, qos=1, retain=True):
         pass
 
 
@@ -23,7 +24,8 @@ def create_device():
     #Alarm_Registry_Map = ParadoxMG5050      ;This is used to map to the correct dictionary class within the ParadoxMap.py package. The word "Registers" is appended before loading.
     #Alarm_Event_Map = ParadoxMG5050  
     comms = dummy_comms()
-    myAlarm = IP150MQTTv2.paradox(comms, 0, 3, 'ParadoxMG5050', 'ParadoxMG5050')
+    client = dummy_mqtt()
+    myAlarm = IP150MQTTv2.paradox(comms, client,0, 3, 'ParadoxMG5050', 'ParadoxMG5050')
     return myAlarm
 
 
@@ -39,6 +41,8 @@ def create_device():
 #    pass
 
 def test_panel_received_Event_OK():
+    
+    client = dummy_mqtt()
     device = create_device()
     messages = []
     messages.append('\xe0\x14\x11\x09\x04\x07\x10\x01\x04\x00\x00\x00\x00\x00\x00\x42\x65\x64\x20\x72\x6f\x6f\x6d\x20\x50\x49\x52\x20\x20\x20\x20\x00\x00\x00\x00\x00\xa1')
