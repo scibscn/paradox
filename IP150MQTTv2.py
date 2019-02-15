@@ -284,6 +284,7 @@ class paradox:
     partitionStatus = None
     partitionName = None
     Skip_Update_Labels = 0
+    
 
     def __init__(self, _transport, client,_encrypted=0, _retries=10, _alarmeventmap="ParadoxMG5050",
                  _alarmregmap="ParadoxMG5050"):
@@ -990,13 +991,13 @@ class paradox:
 
         self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
 
-    def keepAliveStatus0(self, data, Debug_Mode):
+    def keepAliveStatus0(self, data, Debug_Mode,keepalivecount=0):
         #Panel Status 0 - troubles, voltage, zone status
         paneldatetime = "{}-{}-{} {}:{}".format(ord(data[9])*100 + ord(data[10]),
-                        ord(data[11]),
-                        ord(data[12]),
-                        ord(data[13]),
-                        ord(data[14]))
+                        "{0:02d}".format(ord(data[11])),
+                        "{0:02d}".format(ord(data[12])),
+                        "{0:02d}".format(ord(data[13])),
+                        "{0:02d}".format(ord(data[14])))
         #print "dateTime: {}".format(paneldatetime)
         vdc = round(ord(data[15])*(20.3-1.4)/255.0+1.4,1)
         #vdc = ord(data[15])
