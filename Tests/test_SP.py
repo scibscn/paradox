@@ -7,6 +7,7 @@ global client
 class dummy_mqtt(object):
     pass
     def publish(self,topic,payload, qos=1, retain=True):
+        
         pass
 
 

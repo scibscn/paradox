@@ -741,22 +741,22 @@ class paradox:
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 9):   #Arming state on Swawk off
                                     #sqwak off messages - part of the arming sequence.
                                     logging.info("Publishing ARMING event \"%s\" =  %s" % (Topic_Publish_ArmState, "ARMING"))
-                                    client.publish(Topic_Publish_ArmState + "/Status" ,"ARMING", qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,"ARMING", qos=1, retain=True)
                                 elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
                                     #remote button pressed
                                     #print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
                                     if message[8]:
                                        #print "Message 8: %s" % str(ord(message[8]))
                                        logging.info("Publishing PGM event \"%s Button%s\" =  %s" % (Topic_Publish_Events,str(ord(message[8])), "ON"))
-                                       client.publish(Topic_Publish_Events + "/PGM" + str(ord(message[8])) ,"ON", qos=1, retain=True)
+                                       self.client.publish(Topic_Publish_Events + "/PGM" + str(ord(message[8])) ,"ON", qos=1, retain=True)
                                 elif (ord(message[7]) == 36 or ord(message[7]) == 37) and (ord(message[8]) == 11):
                                     #zone triggered = 36
                                     #Smoke alarm = 37
                                     #2018-06-14 07:55:49,749 DEBUG Events 7-36 8-11- Reply: Event:Zone in alarm;SubEvent:Mid toilet Reed
                                     #2018-06-14 07:55:49,752 DEBUG Message 7: 36 Message 8: 11
                                     logging.info("Publishing Triggered event \"%s\" =  %s" % (Topic_Publish_ArmState, "TRIGGERED"))
-                                    client.publish(Topic_Publish_ArmState + "/Status" ,"TRIGGERED", qos=1, retain=True)
-                                    client.publish(Topic_Publish_ArmState + "/Alarm" ,"IN ALARM, Zone: " + location, qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,"TRIGGERED", qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/Alarm" ,"IN ALARM, Zone: " + location, qos=1, retain=True)
                                 else:
                                     logging.debug("Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply))
   
@@ -767,12 +767,12 @@ class paradox:
                                 logging.info("Publishing event E\"%s\" for :SE %s " % (str(ord(message[7])), str(ord(message[8])) ) )
 
                             if Publish_Static_Topic == "1":
-                                client.publish(Topic_Publish_Events + "/" + str(ord(message[7])) + "/" + str(ord(message[8])), qos=1, retain=False)
+                                self.client.publish(Topic_Publish_Events + "/" + str(ord(message[7])) + "/" + str(ord(message[8])), qos=1, retain=False)
 
                             if Debug_Mode >= 2:
                                 logging.debug("Message 7: {0} Message 8: {1}".format(ord(message[7]),ord(message[8])))
 
-                            client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
+                            self.client.publish(Topic_Publish_Events, reply, qos=0, retain=False)
 
                             if Debug_Mode > 1:
                                 logging.debug(reply)
