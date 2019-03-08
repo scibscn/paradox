@@ -146,3 +146,8 @@ From the folder where your config.ini exists:
 ```
 docker run -v $PWD:/opt/paradox/conf psyciknz/paradoxip
 ```
+
+I do have an arm32v7 (Raspberry Pi 3) image on docker hub as well:
+```
+docker run -v $PWD:/opt/paradox/conf psyciknz/paradoxip:arm32v7:latest
+```
