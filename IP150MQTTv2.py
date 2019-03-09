@@ -1198,7 +1198,7 @@ if __name__ == '__main__':
             try:
 
                 Config = ConfigParser.ConfigParser()
-                Config.read("config.ini")
+                Config.read(["config.ini","conf/config.ini"])
                 LOG_FILE = Config.get("Application","Log_File")
                 #log_handler = logging.handlers.TimedRotatingFileHandler(LOG_FILE,when="D",interval=1,backupCount=5)
                 if LOG_FILE.startswith('stream://'):
