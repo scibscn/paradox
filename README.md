@@ -125,6 +125,9 @@ Once the script has settled to listen for events, the following topics are avail
   * Payload (example): State Machine 4, Listening for events...
   * Payload (example): Output: Forcing PGM 1 to state: On
 
+* THe following topic shows if the script is running or not.  This topic will be populated on startup, and if disconnected (client end, mqtt server crash) it will go off.  It's the last will and testament on the client connection
+ * Topic <b>Paradox/$online</b>
+
 ### 3rd Party Connections
 This script will listen for 3rd party (Web-only, not software port) IP connections and if detected will disconnect for a period configured in the config.ini file. After the period has lapsed, the script will attempt to reconnect. This is useful if you still want to use web/smartphone apps (such as Alarmin). Note that it takes about 20 seconds to disconnect after which you can try to connect to the alarm again.
 
@@ -135,3 +138,11 @@ If you want to run this as a daemon on Linux,
  2. Run: sudo systemctl daemon-reload
  3. Then you should be able to start the service with : sudo systemctl start paradoxip.service
 
+## Running in docker
+
+If you want to run this on docker (amd64)
+
+From the folder where your config.ini exists:
+```
+docker run -v $PWD:/opt/paradox/conf psyciknz/paradoxip
+```

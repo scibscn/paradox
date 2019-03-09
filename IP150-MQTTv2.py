@@ -13,7 +13,7 @@ import logging.handlers
 import os.path
 import json
 
-# Version 2.0.9
+# Version 2.0.10
 
 # Alarm controls can be given in payload, e.g. Paradox/C/P1, payl = Disarm
 ################################################################################################
@@ -21,6 +21,10 @@ import json
 ################################################################################################
 # Change History
 ################################################################################################
+# 2019-01-25 2.0.10
+# - When disarming, triggered is also posted.  Trying to stop this from happening, and so it's only posted
+#   when an actual alert.
+#
 # 2019-01-11 2.0.9
 # - Moved subscribe message to on_connect.  May look at splitting various topics to different functions.
 #
@@ -737,7 +741,7 @@ class paradox:
                                        #print "Message 8: %s" % str(ord(message[8]))
                                        logging.info("Publishing PGM event \"%s Button%s\" =  %s" % (Topic_Publish_Events,str(ord(message[8])), "ON"))
                                        client.publish(Topic_Publish_Events + "/PGM" + str(ord(message[8])) ,"ON", qos=1, retain=True)
-                                elif ord(message[7]) == 36 or ord(message[7]) == 37:
+                                elif (ord(message[7]) == 36 or ord(message[7]) == 37) and (ord(message[8]) == 11):
                                     #zone triggered = 36
                                     #Smoke alarm = 37
                                     #2018-06-14 07:55:49,749 DEBUG Events 7-36 8-11- Reply: Event:Zone in alarm;SubEvent:Mid toilet Reed
@@ -745,7 +749,8 @@ class paradox:
                                     logging.info("Publishing Triggered event \"%s\" =  %s" % (Topic_Publish_ArmState, "TRIGGERED"))
                                     client.publish(Topic_Publish_ArmState + "/Status" ,"TRIGGERED", qos=1, retain=True)
                                     client.publish(Topic_Publish_ArmState + "/Alarm" ,"IN ALARM, Zone: " + location, qos=1, retain=True)
-
+                                else:
+                                    logging.debug("Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply))
   
 
                             if Events_Payload_Numeric == 1:
