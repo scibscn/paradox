@@ -219,7 +219,13 @@ config.ini
 lib/client.pyc
 lib/client.pyc
 lib/client.pyc
-*.pyc
 winscp.rnd
 build.config
+*.pyc
+.pytest_cache
+ParadoxIP150v2.pyproj
 ParadoxMap.pyc
+.vs/VSWorkspaceState.json
+.vs/slnx.sqlite
+.vs/ParadoxIP150v2/v15/.suo
+.vscode/settings.json

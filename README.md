@@ -11,7 +11,7 @@ Confirmed supported systems: See the [wiki](../../wiki) (please let me know if y
 1.  Tested with Python 2.7.10 & [Mosquitto MQTT Broker](http://mosquitto.org)
 2.  Download the files in this repository and place it in some directory
 3.  Copy the config-master.ini to config.ini file and edit to configure.
-4.  Run the script: Python IP150-MQTTv2.py
+4.  Run the script: Python IP150MQTTv2.py
 
 NOTE: as at July-2017, there is now a configuration item for the location of the log directory.  See this in the config.
 
@@ -145,4 +145,9 @@ If you want to run this on docker (amd64)
 From the folder where your config.ini exists:
 ```
 docker run -v $PWD:/opt/paradox/conf psyciknz/paradoxip
+```
+
+I do have an arm32v7 (Raspberry Pi 3) image on docker hub as well:
+```
+docker run -v $PWD:/opt/paradox/conf psyciknz/paradoxip:arm32v7:latest
 ```

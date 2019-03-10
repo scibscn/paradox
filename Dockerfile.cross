@@ -29,5 +29,5 @@ ENV PARADOXINI="/opt/paradox/conf/config.ini"
 COPY . /opt/paradox
 
 # run process
-CMD python IP150-MQTTv2.py
+CMD python IP150MQTTv2.py
 
