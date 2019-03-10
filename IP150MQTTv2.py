@@ -23,6 +23,7 @@ import json
 ################################################################################################
 # 2019-02-15 2.0.11
 # - Trying to add pytest.  Had to rename the name of the module to IP150MQTTv2.py  removing the dash.
+# - Changed ParadoxMap ControlOutput registers from 30/31 to 32/33 which are supposed to not overwrtie commands.
 #
 # 2019-01-25 2.0.10
 # - When disarming, triggered is also posted.  Trying to stop this from happening, and so it's only posted
