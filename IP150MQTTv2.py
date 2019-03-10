@@ -206,7 +206,7 @@ def on_message(client, userdata, msg):
                 logging.info("Output force control number: %s " % Output_FControl_Number)
                 try:
                     Output_FControl_NewState = (topic.split('/FO/' + str(Output_FControl_Number) + '/'))[1]
-                except Exception, e:
+                except Exception:
                     Output_FControl_NewState = msg.payload
                     if len(Output_FControl_NewState) < 1:
                         logging.info('No payload given for control number: e.g. On')
@@ -895,7 +895,6 @@ class paradox:
                     logging.error("After error, continuing %d attempts left" % tries)
                     sys.exc_clear()
                     return ''
-                    continue
             else:
                 if len(inc_data) == 0:
                     tries -= 1
