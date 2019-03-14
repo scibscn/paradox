@@ -57,3 +57,23 @@ def test_panel_received_Event_OK():
         assert  False
     else:   
         assert True
+
+def test_panel_received_Event_ARMING():
+    device = create_device()
+    messages = []
+    messages.append('\xe0\x14\x11\x09\x04\x07\x10\x02\x09\x00\x00\x00\x00\x00\x00\xa1')
+    
+    #Default ARMING message
+    device.testForEvents(0,0,data=messages)
+    if mqttresult["Paradox/Partition/Status"] == "ARMING":
+        assert  True
+    else:   
+        assert False
+    
+    #Changed to arming
+    device.Alarm_Partition_States['ARMING'] = 'arming'
+    device.testForEvents(0,0,data=messages)
+    if mqttresult["Paradox/Partition/Status"] == "arming":
+        assert  True
+    else:   
+        assert False
