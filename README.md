@@ -115,18 +115,20 @@ Once the script has settled to listen for events, the following topics are avail
 <b>Note: If you modified the subscription topic for <b>controls</b> in the config.ini file ensure it ends with a '/'.</b>
 
 ### Script State
-* The current state of the script is linked to a topic found in the config file. Examples:
- * Topic <b>Paradox/State</b>
-  * Payload (example): State Machine 1, Connected to MQTT Broker
-  * Payload (example): State Machine 2, Connecting to IP Module...
-  * Payload (example): State Machine 2, Connected to IP Module, unlocking...
-  * Payload (example): State Machine 2, Logged into IP Module successfully
-  * Payload (example): State Machine 3, Reading labels from alarm
-  * Payload (example): State Machine 4, Listening for events...
-  * Payload (example): Output: Forcing PGM 1 to state: On
+* The current state of the script is linked to a topic found in the config file (unless the configuration item <i>Topic_Publish_AppState</i> has been modified). Examples:
+  * Topic <b>Paradox/State</b>
+    * Payload (example): State Machine 1, Connected to MQTT Broker
+    * Payload (example): State Machine 2, Connecting to IP Module...
+    * Payload (example): State Machine 2, Connected to IP Module, unlocking...
+    * Payload (example): State Machine 2, Logged into IP Module successfully
+    * Payload (example): State Machine 3, Reading labels from alarm
+    * Payload (example): State Machine 4, Listening for events...
+    * Payload (example): Output: Forcing PGM 1 to state: On
 
-* THe following topic shows if the script is running or not.  This topic will be populated on startup, and if disconnected (client end, mqtt server crash) it will go off.  It's the last will and testament on the client connection
- * Topic <b>Paradox/$online</b>
+* The following topic shows if the script is running or not.  This topic will be populated on startup, and if disconnected (client end, mqtt server crash) it will go off.  It's the last will and testament on the client connection
+  * Topic <b>Paradox/$online</b>
+* The following topic will show the current ParadoxIP software version (unless the configuration item <i>Topic_Publish_AppState</i> has been modified)
+  * Topic <b>Paradox/State/$version</b>
 
 ### 3rd Party Connections
 This script will listen for 3rd party (Web-only, not software port) IP connections and if detected will disconnect for a period configured in the config.ini file. After the period has lapsed, the script will attempt to reconnect. This is useful if you still want to use web/smartphone apps (such as Alarmin). Note that it takes about 20 seconds to disconnect after which you can try to connect to the alarm again.
