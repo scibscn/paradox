@@ -735,23 +735,23 @@ class paradox:
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
                                     logging.info("Publishing SLEEP event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States['SLEEP']))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States['SLEEP'], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location, self.Alarm_Partition_States['SLEEP'], qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 3 ):   #STAY
                                     #partition stayd armed event
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
                                     logging.info("Publishing STAY event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States['STAY']))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States["STAY"], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location, self.Alarm_Partition_States["STAY"], qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 12):   #arm
                                     #partition full armed event
                                     #12 is sleep arm, 14 is full arm - is STAY 13?
                                     logging.info("Publishing ARMED event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States["ARMED"]))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States["ARMED"], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location, self.Alarm_Partition_States["ARMED"], qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 9):   #Arming state on Swawk off
                                     #sqwak off messages - part of the arming sequence.
                                     logging.info("Publishing ARMING event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States["ARMING"]))
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States["ARMING"], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location, self.Alarm_Partition_States["ARMING"], qos=1, retain=True)
                                 elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
                                     #remote button pressed
                                     #print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
@@ -765,7 +765,7 @@ class paradox:
                                     #2018-06-14 07:55:49,749 DEBUG Events 7-36 8-11- Reply: Event:Zone in alarm;SubEvent:Mid toilet Reed
                                     #2018-06-14 07:55:49,752 DEBUG Message 7: 36 Message 8: 11
                                     logging.info("Publishing Triggered event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States["TRIGGERED"]))
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States["TRIGGERED"], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location, self.Alarm_Partition_States["TRIGGERED"], qos=1, retain=True)
                                     self.client.publish(Topic_Publish_ArmState + "/Alarm" ,"IN ALARM, Zone: " + location, qos=1, retain=True)
                                 else:
                                     logging.debug("Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply))
