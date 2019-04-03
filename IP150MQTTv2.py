@@ -727,31 +727,31 @@ class paradox:
                                     self.client.publish(Topic_Publish_ZoneState + "/" + location,ZonesOn, qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 11 or ord(message[8]) == 3):   #Disarm
                                     #partition disarmed event
-                                    logging.info("Publishing DISARMED event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States['DISARMED']))
+                                    logging.info("Publishing DISARMED event \"%s\" for %s =  %s" % (Topic_Publish_ArmState, location, self.Alarm_Partition_States['DISARMED']))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOff, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States['DISARMED'], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/Status/" + location ,self.Alarm_Partition_States['DISARMED'], qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 4 ):   #SLEEP
                                     #partition sleep armed event
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
-                                    logging.info("Publishing SLEEP event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States['SLEEP']))
+                                    logging.info("Publishing SLEEP event \"%s\" for %s =  %s" % (Topic_Publish_ArmState, location, self.Alarm_Partition_States['SLEEP']))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/" + location, self.Alarm_Partition_States['SLEEP'], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/Status/" + location, self.Alarm_Partition_States['SLEEP'], qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 3 ):   #STAY
                                     #partition stayd armed event
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
-                                    logging.info("Publishing STAY event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States['STAY']))
+                                    logging.info("Publishing STAY event \"%s\" for %s =  %s" % (Topic_Publish_ArmState, location, self.Alarm_Partition_States['STAY']))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/" + location, self.Alarm_Partition_States["STAY"], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/Status/" + location, self.Alarm_Partition_States["STAY"], qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 12):   #arm
                                     #partition full armed event
                                     #12 is sleep arm, 14 is full arm - is STAY 13?
-                                    logging.info("Publishing ARMED event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States["ARMED"]))
+                                    logging.info("Publishing ARMED event \"%s\" for %s =  %s" % (Topic_Publish_ArmState, location, self.Alarm_Partition_States["ARMED"]))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/" + location, self.Alarm_Partition_States["ARMED"], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/Status/" + location, self.Alarm_Partition_States["ARMED"], qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 9):   #Arming state on Swawk off
                                     #sqwak off messages - part of the arming sequence.
-                                    logging.info("Publishing ARMING event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States["ARMING"]))
-                                    self.client.publish(Topic_Publish_ArmState + "/" + location, self.Alarm_Partition_States["ARMING"], qos=1, retain=True)
+                                    logging.info("Publishing ARMING event \"%s\" for %s =  %s" % (Topic_Publish_ArmState, location, self.Alarm_Partition_States["ARMING"]))
+                                    self.client.publish(Topic_Publish_ArmState + "/Status/" + location, self.Alarm_Partition_States["ARMING"], qos=1, retain=True)
                                 elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
                                     #remote button pressed
                                     #print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
