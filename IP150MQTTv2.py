@@ -13,7 +13,7 @@ import logging.handlers
 import os.path
 import json
 
-version = "2.0.12"
+version = "2.0.13"
 
 # Alarm controls can be given in payload, e.g. Paradox/C/P1, payl = Disarm
 ################################################################################################
@@ -21,6 +21,12 @@ version = "2.0.12"
 ################################################################################################
 # Change History
 ################################################################################################
+# 2019-04-03 2.0.13
+# - [kovacsbalu] - Adding partition name on live events
+# - [psyciknz]   - Adding partition names on keepalive messages (currently only partition 1)
+# - [Psyciknz]   - added keepalivestatus1 tests
+# - [Psyciknz]   - updated live events tests for partition name changes.
+#
 # 2019-02-15 2.0.12
 # - Adding user customisable Alarm states = ARMED = 'armed', SLEEP = 'armed_night' - to help with home assistant.
 # - Added $version topic to Topic_Publish_AppState (eg Paradox/State) + "/$version"
@@ -283,6 +289,7 @@ class paradox:
     zoneTotal = 0
     zoneStatus = ['']
     zoneNames = {}
+    partitions = {}
     zonePartition = None
     partitionStatus = None
     partitionName = None
@@ -639,13 +646,18 @@ class paradox:
                 if Startup_Publish_All_Info == "True":
                     topic = func.split("Label")[0]
                     if topic[0].upper() + topic[1:] + "s" == "Zones":
-                       self.zoneNames = completed_dict
+                        self.zoneNames = completed_dict
+                    elif topic.upper() == "PARTITION":
+                        self.partitions = completed_dict
+
                     logging.info("updateAllLabels:  Topic being published " + Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s" + ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()))
                     self.client.publish(Topic_Publish_Labels + "/" + topic[0].upper() + topic[1:] + "s",
                                    ';'.join('{}{}'.format(key, ":" + val) for key, val in completed_dict.items()), 1, True)
                 else:
                     if topic[0].upper() + topic[1:] + "s" == "Zones":
-                       self.zoneNames = completed_dict
+                        self.zoneNames = completed_dict
+                    elif topic.upper() == "PARTITION":
+                        self.partitions = completed_dict
 
                 #print self.zoneNames
 
@@ -691,7 +703,7 @@ class paradox:
                             if Events_Payload_Numeric == 0:
 
                                 event, subevent = self.eventmap.getEventDescription(ord(message[7]), ord(message[8]))
-                                location = message[15:30].strip().translate(None, '\x00')
+                                location = message[15:30].strip().translate(None, '\x00\xa1')
                                 if location and Debug_Mode >= 1:
                                     logging.debug("Event location: \"%s\"" % location)
                                     #print "Event location: \"%s\"" % location
@@ -729,29 +741,29 @@ class paradox:
                                     #partition disarmed event
                                     logging.info("Publishing DISARMED event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States['DISARMED']))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOff, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States['DISARMED'], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location+ "/Status" ,self.Alarm_Partition_States['DISARMED'], qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 4 ):   #SLEEP
                                     #partition sleep armed event
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
                                     logging.info("Publishing SLEEP event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States['SLEEP']))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States['SLEEP'], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location+ "/Status", self.Alarm_Partition_States['SLEEP'], qos=1, retain=True)
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 3 ):   #STAY
                                     #partition stayd armed event
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
                                     logging.info("Publishing STAY event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States['STAY']))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States["STAY"], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location+ "/Status", self.Alarm_Partition_States["STAY"], qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 12):   #arm
                                     #partition full armed event
                                     #12 is sleep arm, 14 is full arm - is STAY 13?
                                     logging.info("Publishing ARMED event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States["ARMED"]))
                                     self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States["ARMED"], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location+ "/Status", self.Alarm_Partition_States["ARMED"], qos=1, retain=True)
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 9):   #Arming state on Swawk off
                                     #sqwak off messages - part of the arming sequence.
                                     logging.info("Publishing ARMING event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States["ARMING"]))
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States["ARMING"], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location+ "/Status", self.Alarm_Partition_States["ARMING"], qos=1, retain=True)
                                 elif ord(message[7]) == 9: # and ord(message[8] == 1): # remote button pressed
                                     #remote button pressed
                                     #print "button pressed: " + str(ord(message[7])) #+ " " +  str(ord(message[8]))
@@ -765,7 +777,7 @@ class paradox:
                                     #2018-06-14 07:55:49,749 DEBUG Events 7-36 8-11- Reply: Event:Zone in alarm;SubEvent:Mid toilet Reed
                                     #2018-06-14 07:55:49,752 DEBUG Message 7: 36 Message 8: 11
                                     logging.info("Publishing Triggered event \"%s\" =  %s" % (Topic_Publish_ArmState, self.Alarm_Partition_States["TRIGGERED"]))
-                                    self.client.publish(Topic_Publish_ArmState + "/Status" ,self.Alarm_Partition_States["TRIGGERED"], qos=1, retain=True)
+                                    self.client.publish(Topic_Publish_ArmState + "/" + location + "/Status", self.Alarm_Partition_States["TRIGGERED"], qos=1, retain=True)
                                     self.client.publish(Topic_Publish_ArmState + "/Alarm" ,"IN ALARM, Zone: " + location, qos=1, retain=True)
                                 else:
                                     logging.debug("Events 7-{} 8-{}- Reply: {}".format(ord(message[7]),ord(message[8]),reply))
@@ -1045,7 +1057,7 @@ class paradox:
                         if keepalivecount % Publish_Status_Factor == 0:
                             self.client.publish(Topic_Publish_ZoneState + "/" + location, ZonesOn if bit else ZonesOff, qos=1, retain=True)
 
-    def keepAliveStatus1(self, data, Debug_Mode):
+    def keepAliveStatus1(self, data, Debug_Mode,keepalivecount=0):
         #Panel Status 1 - Partition Status 
         partition1status1 = ord(data[17])
         
@@ -1090,8 +1102,12 @@ class paradox:
 
         if Debug_Mode >= 1:
             logging.info("Publishing Partition Arm state (state: {})".format( armstate))
+        
+        partitionlocation =  ""
+        if self.partitions:
+            partitionlocation = "/" + self.partitions[1].strip()
         if keepalivecount % Publish_Status_Factor == 0:
-            self.client.publish(Topic_Publish_ArmState + "/Status",self.Alarm_Partition_States[armstate],qos=1,retain=True)
+            self.client.publish(Topic_Publish_ArmState + partitionlocation + "/Status",self.Alarm_Partition_States[armstate],qos=1,retain=True)
 
         partition1status3 = ord(data[19])
         for y in range(8):
