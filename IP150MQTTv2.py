@@ -1122,7 +1122,7 @@ class paradox:
             partitionlocation = "/" + self.partitions[1].strip()
         if self.keepalivecount % Publish_Status_Factor == 0:
             if Debug_Mode >= 1:
-                logging.info("Publishing Partition Arm state (state: {})".format( armstate))
+                logging.info("Publishing Partition \"{}\" Arm state (state: {})".format(partitionlocation, armstate))
             self.client.publish(Topic_Publish_ArmState + partitionlocation + "/Status",self.Alarm_Partition_States[armstate],qos=1,retain=True)
 
         partition1status3 = ord(data[19])
