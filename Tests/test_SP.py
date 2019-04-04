@@ -68,6 +68,31 @@ def test_panel_received_heartbeat1():
     else:
         assert False
 
+def test_panel_received_heartbeat1_both_partitions_armed():
+    device = create_device()
+    
+    #                                                                                01 Armed Part1   01 Armed Part2
+    #              0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16 0x01 Armed   20  21  22  23                                                              
+    messages = '\x52\x00\x80\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd4'
+    device.keepAliveStatus1(messages,2,0)
+    if mqttresult.has_key("Paradox/Partition/Partition1/Status") and mqttresult["Paradox/Partition/Partition1/Status"] == 'ARMED':
+        assert True
+    else:
+        assert False
+
+    if mqttresult.has_key("Paradox/Partition/BottomFloor/Status") and mqttresult["Paradox/Partition/BottomFloor/Status"] == 'ARMED':
+        assert True
+    else:
+        assert False
+
+    #              0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16 0x00 disarmed                                                                     
+    messages = '\x52\x00\x80\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd4'
+    device.keepAliveStatus1(messages,2,0)
+    if mqttresult.has_key("Paradox/Partition/Partition1/Status") and mqttresult["Paradox/Partition/Partition1/Status"] == 'DISARMED':
+        assert True
+    else:
+        assert False
+
 def test_panel_keepalive1_DISARMED_use_OPEN_CLOSED():
     device = create_device()
     IP150MQTTv2.ZonesOff = "CLOSED"
@@ -136,6 +161,5 @@ def test_panel_received_long_partition_name_Event_ARMING():
         assert  True
     else:   
         assert False
-
 
     

@@ -1076,7 +1076,16 @@ class paradox:
 
     def keepAliveStatus1(self, data, Debug_Mode,keepalivecount=keepalivecount):
         #Panel Status 1 - Partition Status 
-        partition1status1 = ord(data[17])
+        # Get Partition 1 Status
+        self.keepAlivePartitionStatus(data[17:21],1,Debug_Mode)
+
+        # Get Partition 2 Status
+        self.keepAlivePartitionStatus(data[21:25],2,Debug_Mode)
+        
+
+    def keepAlivePartitionStatus(self, data, partition, Debug_Mode=0):
+        #Panel Status 1 - Partition Status 
+        partition1status1 = ord(data[0])
         
         armstate = "DISARMED"
         for y in range(8):
@@ -1103,7 +1112,7 @@ class paradox:
             #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
             #client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
         
-        partition1status2 = ord(data[18])
+        partition1status2 = ord(data[1])
         for y in range(8):
             bit = partition1status2 & 1
             partition1status2 = partition1status2 / 2
@@ -1119,13 +1128,13 @@ class paradox:
 
         partitionlocation =  ""
         if self.partitions:
-            partitionlocation = "/" + self.partitions[1].strip()
+            partitionlocation = "/" + self.partitions[partition].strip()
         if self.keepalivecount % Publish_Status_Factor == 0:
             if Debug_Mode >= 1:
                 logging.info("Publishing Partition \"{}\" Arm state (state: {})".format(partitionlocation, armstate))
             self.client.publish(Topic_Publish_ArmState + partitionlocation + "/Status",self.Alarm_Partition_States[armstate],qos=1,retain=True)
 
-        partition1status3 = ord(data[19])
+        partition1status3 = ord(data[2])
         for y in range(8):
             bit = partition1status3 & 1
             partition1status3 = partition1status3 / 2
@@ -1135,7 +1144,7 @@ class paradox:
             if Debug_Mode >= 2:
                 #print "Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 3 bits state (state: {}, bit: {})".format( zoneState, itemNo))
-        partition1status4 = ord(data[20])
+        partition1status4 = ord(data[3])
         for y in range(8):
             bit = partition1status4 & 1
             partition1status4 = partition1status4 / 2
@@ -1145,20 +1154,9 @@ class paradox:
                 #print "Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo)
                 logging.debug("Publishing paritions status 4 bits state (state: {}, bit: {})".format( zoneState, itemNo))
                 #print "partition 1 status: {} {} {} {}".format(partition1status1,partition1status2,partition1status3,partition1status4)
-        
-        partition2status1 = ord(data[21])
-        partition2status2 = ord(data[22])
-        partition2status3 = ord(data[23])
-        partition2status4 = ord(data[24])
-        
-        if Debug_Mode >= 2:
-            logging.debug("partition 2 status: {} {} {} {}".format(partition2status1,partition2status2,partition2status3,partition2status4))
-            #print "partition 2 status: {} {} {} {}".format(partition2status1,partition2status2,partition2status3,partition2status4)
 
-        #jsondata = json.dumps({"paneldate":paneldatetime,"vdc":vdc,"dc":dc,"battery":battery})
-        #logging.info("Publishing panel status json: '{}'".format(jsondata))
-        #client.publish("Paradox/Status/{0}".format(self.aliveSeq),jsondata)
-        #client.publish(Topic_Publish_Status/ + "{0}".format(self.aliveSeq)
+        if Debug_Mode >= 2:
+            logging.debug("partition {}:{} status: {} {} {} {}".format(partition,partitionlocation,partition1status1,partition1status2,partition1status3,partition1status4))
 
     def keepAlive(self, Debug_Mode=0):
 
