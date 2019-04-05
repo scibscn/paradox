@@ -720,7 +720,7 @@ class paradox:
                             if Events_Payload_Numeric == 0:
 
                                 event, subevent = self.eventmap.getEventDescription(ord(message[7]), ord(message[8]))
-                                location = message[15:len(message)-1].translate(None, '\x00').strip() #.translate(None,'\xa1')
+                                location = message[15:len(message)-1].translate(None, '\x00').translate(None,'\x01').strip() #
                                 if location and Debug_Mode >= 1:
                                     logging.debug("Event location: \"%s\"" % location)
                                     #print "Event location: \"%s\"" % location
