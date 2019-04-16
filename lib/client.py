@@ -1661,11 +1661,11 @@ class Client(object):
                 packet.extend(struct.pack("!H", len(data)))
                 packet.extend(data)
             elif isinstance(data, str):
-                udata = data.encode('utf-8')
+                udata = data.decode('utf-8', 'ignore').encode('utf-8')
                 pack_format = "!H" + str(len(udata)) + "s"
                 packet.extend(struct.pack(pack_format, len(udata), udata))
             elif isinstance(data, unicode):
-                udata = data.encode('utf-8')
+                udata = data.decode('utf-8', 'ignore').encode('utf-8')
                 pack_format = "!H" + str(len(udata)) + "s"
                 packet.extend(struct.pack(pack_format, len(udata), udata))
             else:
@@ -1675,7 +1675,7 @@ class Client(object):
                 packet.extend(struct.pack("!H", len(data)))
                 packet.extend(data)
             elif isinstance(data, str):
-                udata = data.encode('utf-8')
+                udata = data.decode('utf-8', 'ignore').encode('utf-8')
                 pack_format = "!H" + str(len(udata)) + "s"
                 packet.extend(struct.pack(pack_format, len(udata), udata))
             else:
@@ -1685,7 +1685,7 @@ class Client(object):
         if self._sock is None and self._ssl is None:
             return MQTT_ERR_NO_CONN
 
-        utopic = topic.encode('utf-8')
+        utopic = topic.decode('utf-8', 'ignore').encode('utf-8')
         command = PUBLISH | ((dup&0x1)<<3) | (qos<<1) | retain
         packet = bytearray()
         packet.extend(struct.pack("!B", command))
@@ -1694,12 +1694,12 @@ class Client(object):
             self._easy_log(MQTT_LOG_DEBUG, "Sending PUBLISH (d"+str(dup)+", q"+str(qos)+", r"+str(int(retain))+", m"+str(mid)+", '"+topic+"' (NULL payload)")
         else:
             if isinstance(payload, str):
-                upayload = payload.encode('utf-8')
+                upayload = payload.decode('utf-8', 'ignore').encode('utf-8')
                 payloadlen = len(upayload)
             elif isinstance(payload, bytearray):
                 payloadlen = len(payload)
             elif isinstance(payload, unicode):
-                upayload = payload.encode('utf-8')
+                upayload = payload.decode('utf-8', 'ignore').encode('utf-8')
                 payloadlen = len(upayload)
 
             remaining_length = 2+len(utopic) + payloadlen
