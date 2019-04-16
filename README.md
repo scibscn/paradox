@@ -77,8 +77,9 @@ Once the script has settled to listen for events, the following topics are avail
   * Topic <b>Paradox/Partition</b>
   Shows the current partition status (<i>ON</i>/<i>OFF</i>).  Can't be determines on startup though (unless you've updated the Pincode), only while running.     If a valid pincode is entered in the configuration file, the parition status will be updated every 6 seconds.
   
-  * Topic <b>Paradox/Partition/Status</b>
-  Shows <i>ARMED</i>, <i>DISARMED</i>, <i>SLEEP</i> and <i>STAY</i>, <i>ARMING</i> for the arming type of the partition (only partition 1 at this stage), and I may need to move this to a Paradox/P1 /P2 type structure.
+  * Topic <b>Paradox/Partition/{partition Name}/Status</b>
+  Shows <i>ARMED</i>, <i>DISARMED</i>, <i>SLEEP</i> and <i>STAY</i>, <i>ARMING</i> for the arming type of the partition (only partition 1 at this stage), and I may need to move this to a Paradox/P1 /P2 type structure.  <i>Change for 2.0.13 (is a breaking change) in that the partition name is added to the status</i>. Eg:
+ `Paradox/Partition/Area 1/Status`
 
   * Topic <b>Paradox/Status/1</b>
   A Json object with the voltages of the panel for example:
