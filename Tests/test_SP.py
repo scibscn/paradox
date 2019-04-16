@@ -139,7 +139,7 @@ def test_panel_received_Event_ARMING():
     mqttresult.clear()
     messages = []
     # Arming event for "Area 1"
-    messages.append('\xe0\x14\x11\x09\x04\x07\x10\x02\x09\x00\x00\x00\x00\x00\x00\x41\x72\x65\x61\x20\x31\xa1')
+    messages.append('\xe0\x14\x11\x09\x04\x07\x10\x02\x09\x00\x00\x00\x00\x00\x00\x41\x72\x65\x61\x20\x31')
     
     #Default ARMING message
     device.testForEvents(0,0,data=messages)
@@ -161,30 +161,30 @@ def test_panel_received_long_partition_name_Event_ARMING():
     mqttresult.clear()
     messages = []
     # Arming event for "Area 1"                        Arming                      A   r   e   a       1       B   o   t   t   o   m       f   l   o   o   r  
-    messages.append('\xe0\x14\x11\x09\x04\x07\x10\x02\x09\x00\x00\x00\x00\x00\x00\x41\x72\x65\x61\x20\x31\x20\x42\x6f\x74\x74\x6f\x6d\x20\x66\x6c\x6f\x6f\x72\xa1')
+    messages.append('\xe0\x14\x11\x09\x04\x07\x10\x02\x09\x00\x00\x00\x00\x00\x00\x41\x72\x65\x61\x20\x31\x20\x42\x6f\x74\x74\x6f\x6d\x20\x66\x6c\x6f\x6f\x72')
     
     #Default ARMING message
     device.testForEvents(0,0,data=messages)
-    if mqttresult.has_key("Paradox/Partition/Area 1 Bottom floor/Status") and mqttresult["Paradox/Partition/Area 1 Bottom floor/Status"] == "arming":
+    if mqttresult.has_key("Paradox/Partition/Area 1 Bottom fl/Status") and mqttresult["Paradox/Partition/Area 1 Bottom fl/Status"] == "arming":
         assert  True
     else:   
         assert False
 
-def test_panel_received_long_partition_name_Kovacs_Event_ARMING():
-    device = create_device()
-    messages = []
-    mqttresult.clear()
-    # Arming event for "Area 1"                        Arming                      A   r   e   a       1       B   o   t   t   o   m       f   l   o   o   r  
-    #messages.append('\xe0\x14\x11\x09\x04\x07\x10\x02\x09\x00\x00\x00\x00\x00\x00\x41\x72\x65\x61\x20\x31\x20\x42\x6f\x74\x74\x6f\x6d\x20\x66\x6c\x6f\x6f\x72\xa1')
+# def test_panel_received_long_partition_name_Kovacs_Event_ARMING():
+#     device = create_device()
+#     messages = []
+#     mqttresult.clear()
+#     # Arming event for "Area 1"                        Arming                      A   r   e   a       1       B   o   t   t   o   m       f   l   o   o   r  
+#     #messages.append('\xe0\x14\x11\x09\x04\x07\x10\x02\x09\x00\x00\x00\x00\x00\x00\x41\x72\x65\x61\x20\x31\x20\x42\x6f\x74\x74\x6f\x6d\x20\x66\x6c\x6f\x6f\x72\xa1')
 
-    messages.append('\xe2\x14\x13\x04\x05\x00\x0b\x02\x0c\x01\x00\x00\x00\x00\x02\x50\x61\x72\x74\x69\x32\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x01')
-    messages.append('\x00\x00\x00\x00\xd7')
+#     messages.append('\xe2\x14\x13\x04\x05\x00\x0b\x02\x0c\x01\x00\x00\x00\x00\x02\x50\x61\x72\x74\x69\x32\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x01')
+#     messages.append('\x00\x00\x00\x00\xd7')
     
-    #Default ARMING message
-    device.testForEvents(0,0,data=messages)
-    if mqttresult.has_key("Paradox/Partition/Parti2/Status") and mqttresult["Paradox/Partition/Parti2/Status"] == "arming":
-        assert  True
-    else:   
-        assert False
+#     #Default ARMING message
+#     device.testForEvents(0,0,data=messages)
+#     if mqttresult.has_key("Paradox/Partition/Parti2/Status") and mqttresult["Paradox/Partition/Parti2/Status"] == "arming":
+#         assert  True
+#     else:   
+#         assert False
 
     
