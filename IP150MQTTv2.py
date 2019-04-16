@@ -639,14 +639,16 @@ class paradox:
                     start = register_dict[x]["Receive"]["Start"]
                     finish = register_dict[x]["Receive"]["Finish"]
                     # self.zoneNames.append(reply[start:finish].rstrip()) FIXME: remove all internal zoneNames references and only use the dict
-                    newzone = reply[start:finish].rstrip().translate(None, '\x00')
+                    # newzone = reply[start:finish].rstrip().translate(None, '\x00')
+                    newzone = reply[start:finish].rstrip().translate(None, '\x00').decode('utf8', 'ignore').encode('utf8')
                     mapping_dict(x, newzone)
 
                     if (skip_next == 0) and (message[0:len(next_message)] == next_message):
                         # #print "Same"
                         start = register_dict[x + 1]["Receive"]["Start"]
                         finish = register_dict[x + 1]["Receive"]["Finish"]
-                        newzone = reply[start:finish].rstrip().translate(None, '\x00')
+                        #newzone = reply[start:finish].rstrip().translate(None, '\x00')
+                        newzone = reply[start:finish].rstrip().translate(None, '\x00').decode('utf8', 'ignore').encode('utf8')
                         mapping_dict(x + 1, newzone)
                         skip_next = 1
 
@@ -720,7 +722,7 @@ class paradox:
                             if Events_Payload_Numeric == 0:
 
                                 event, subevent = self.eventmap.getEventDescription(ord(message[7]), ord(message[8]))
-                                location = message[15:len(message)-1].translate(None, '\x00').translate(None,'\x01').strip() #
+                                location = message[15:31].translate(None, '\x00').translate(None,'\x01').strip()
                                 if location and Debug_Mode >= 1:
                                     logging.debug("Event location: \"%s\"" % location)
                                     #print "Event location: \"%s\"" % location
