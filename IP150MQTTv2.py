@@ -155,7 +155,7 @@ Error_Delay = 30
 
 #Logging
 LOG_LEVEL = logging.INFO
-LOG_FILE = "/var/log/paradoxip.log"
+LOG_FILE = "/var/log/paradox.log"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 #logging.basicConfig(filename=LOG_FILE, format=LOG_FORMAT, level=LOG_LEVEL)
 
@@ -1333,7 +1333,7 @@ if __name__ == '__main__':
                     logging.info("State machine 1: starting client again")
 
                 logging.info("State01:Attempting connection to MQTT Broker: " + MQTT_IP + ":" + str(MQTT_Port))
-                client = mqtt.Client("paradoxip")
+                client = mqtt.Client("paradox")
 
                 if mqtt_password == '':
                     mqtt_password = None
